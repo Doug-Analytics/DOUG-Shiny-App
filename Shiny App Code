@@ -1,0 +1,1057 @@
+library(tidyverse)
+library(nflverse)
+library(magick)
+library(shiny)
+library(ggplot2)
+library(ggrepel)
+library(cowplot)
+library(grid)
+library(htmltools)
+library(ggtext)
+library(shinythemes)
+options(scipen = 9999)
+
+url <- "https://i.imgur.com/WKmeVMI.png"
+image <- image_read(url)
+
+################################################################################
+
+ui <- fluidPage(
+  
+  theme = shinytheme("spacelab"),
+  
+  tags$head(tags$title("DOUG: Design Outstandingly Unique Graphs")),
+  
+  titlePanel(
+    HTML("<b>DOUG</b>: <b>D</b>esign <b>O</b>utstandingly <b>U</b>nique <b>G</b>raphs")
+  ),
+  
+  tags$head(
+    tags$link(rel = "shortcut icon", href = "https://i.imgur.com/WKmeVMI.png")
+  ),
+  splitLayout(cellWidths = c(175, 230),
+              cellArgs = list(style = "padding: 10px"),
+              tags$a(href="https://twitter.com/Doug_Analytics", target="_blank",
+                     class="btn btn-info",
+                     icon("twitter"), " @Doug_Analytics"),
+              tags$a(href="https://www.buymeacoffee.com/DougAnalytics", target="_blank",
+                     class="btn btn-success",
+                     icon("mug-hot"), " Buy Me a Coffee")
+  ),
+
+
+  sidebarLayout(
+    sidebarPanel(
+      
+      radioButtons("plot_type", "Plot Type:", choices = c("Scatter Plot", "Bar Graph", "Weekly Line Graph")),
+      
+      selectInput("y_axis",
+                  "Y Axis:",
+                  choices = list(
+                    "Advanced Passing Stats" = c("EPA/Play", "Completion % Over Expected", "Total EPA", "Success Rate","EPA/Pass", "Expected Completion %"),
+                    "NextGenStats" = c("Avg Time to Throw","Avg Completed Air Yards", "Avg Intended Air Yards", "Avg Air Yards Differential", "Aggressiveness", "Max Completed Air Distance", "Avg Air Yards to Sticks", "CPOE (NGS)", "Expected Completion % (NGS)"),
+                    "Basic Passing Stats" = c("Attempts", "Completions", "Completion %", "Passing Yards", "Yards per Attempt", "Yards per Completion", "Passing Touchdowns", "Total Touchdowns", "TD %", "Passing 1st Downs", "Passing 1st Down %", "YAC per Completion", "Net Yards per Attempt", "Adjusted Yards per Attempt", "Adjusted Net Yards per Attempt", "Passer Rating"),
+                    "Rushing Stats" = c("EPA/Rush", "Yards per Rush", "Rushing Touchdowns", "Scramble Rate", "EPA per Scramble", "Yards per Scramble"),
+                    "Turnovers" = c("Interceptions", "Fumbles", "Fumbles Lost", "Turnovers", "INT %", "Fumble %", "Turnover %"),
+                    "Sacks" = c("Sack Rate", "Yards Lost per Sack", "Total Sacks", "Total Sack Yards Lost"),
+                    "Miscellaneous" = c("Seconds per Play", "No-Huddle Rate", "Air EPA per Play", "10+ Yard Completions", "20+ Yard Completions", "20+ Air Yard Attempts",  "Explosive Pass Rate"),
+                    "fOoTbAlL iSn'T pLaYeD oN sPrEaDsHeEtS" = c("Jersey Number", "Height (inches)", "Draft Pick")
+                  ),
+                  selected = "EPA/Play"),
+      
+      conditionalPanel(
+        condition = "!(input.plot_type == 'Bar Graph' || input.plot_type == 'Weekly Line Graph')",
+        selectInput("x_axis",
+                    "X Axis:",
+                    choices = list(
+                      "Advanced Passing Stats" = c("EPA/Play", "Completion % Over Expected", "Total EPA", "Success Rate","EPA/Pass", "Expected Completion %"),
+                      "NextGenStats" = c("Avg Time to Throw","Avg Completed Air Yards", "Avg Intended Air Yards", "Avg Air Yards Differential", "Aggressiveness", "Max Completed Air Distance", "Avg Air Yards to Sticks", "CPOE (NGS)", "Expected Completion % (NGS)"),
+                      "Basic Passing Stats" = c("Attempts", "Completions", "Completion %", "Passing Yards", "Yards per Attempt", "Yards per Completion", "Passing Touchdowns", "Total Touchdowns", "TD %", "Passing 1st Downs", "Passing 1st Down %", "YAC per Completion", "Net Yards per Attempt", "Adjusted Yards per Attempt", "Adjusted Net Yards per Attempt", "Passer Rating"),
+                      "Rushing Stats" = c("EPA/Rush", "Yards per Rush", "Rushing Touchdowns", "Scramble Rate", "EPA per Scramble", "Yards per Scramble"),
+                      "Turnovers" = c("Interceptions", "Fumbles", "Fumbles Lost", "Turnovers", "INT %", "Fumble %", "Turnover %"),
+                      "Sacks" = c("Sack Rate", "Yards Lost per Sack", "Total Sacks", "Total Sack Yards Lost"),
+                      "Miscellaneous" = c("Seconds per Play", "No-Huddle Rate", "Air EPA per Play", "10+ Yard Completions", "20+ Yard Completions", "20+ Air Yard Attempts",  "Explosive Pass Rate"),
+                      "fOoTbAlL iSn'T pLaYeD oN sPrEaDsHeEtS" = c("Jersey Number", "Height (inches)", "Draft Pick")
+                    ),
+                    selected = "Completion % Over Expected")),
+      
+      sliderInput("week_range",
+                  "Week Range:",
+                  min = 1, max = 22,
+                  value = c(1, 18),
+                  step = 1,
+                  sep = ""),
+      #tags$label(h3("Minimum Attempts"), style="font-size: 16px; font-weight: bold;"),
+      conditionalPanel(
+        condition = "(input.plot_type == 'Bar Graph' || input.plot_type == 'Scatter Plot')",
+         numericInput("min_attempts",
+                   "Minimum QB Plays:",
+                   value = 270, min = 1)),
+      conditionalPanel(
+        condition = "(input.plot_type == 'Bar Graph' || input.plot_type == 'Scatter Plot')",
+      checkboxInput("lock_attempts",
+                    "Lock Minimum QB Plays?",
+                    value = FALSE)),
+      selectInput("qb_highlight", "Highlight QB's:", choices = c(), multiple = TRUE),
+      textInput("title", "Custom Plot Title:"),
+      conditionalPanel(
+        condition = "!(input.plot_type == 'Bar Graph' || input.plot_type == 'Weekly Line Graph')",
+        checkboxInput("trendline_checkbox", "Display Trendline?", TRUE)),
+      conditionalPanel(
+        condition = "(input.plot_type == 'Bar Graph')",
+        checkboxInput("bar_values_checkbox", "Display Values?", TRUE)),
+      conditionalPanel(
+        condition = "!(input.plot_type == 'Weekly Line Graph')",
+      checkboxInput("avg_line_checkbox", "Display Average Lines?", TRUE)),
+      downloadButton('downloadPlot', 'Download Plot'),
+      
+    ),
+    
+    mainPanel(
+      plotOutput("plot")
+
+
+      
+    )))
+
+
+################################################################################
+
+server <- function(input, output, session) {
+  
+  
+  observeEvent(input$plot_type, {
+    if(input$plot_type == "Scatter Plot") {
+      updateCheckboxInput(session, "avg_line_checkbox", label = "Display Average Lines?")
+    } else {
+      updateCheckboxInput(session, "avg_line_checkbox", label = "Display Average Line?")
+    }
+  })
+  
+  
+  observeEvent(input$week_range, {
+    new_num <- (diff(input$week_range) + 1) * 15
+    
+    if (is.null(input$min_attempts) || is.na(input$min_attempts) || nchar(input$min_attempts) == 0) {
+      new_min_attempts <- 15
+      updateNumericInput(session, "min_attempts", value = new_min_attempts)
+    }
+    
+    if (!input$lock_attempts) {
+      new_num <- (diff(input$week_range) + 1) * 15
+      if (input$plot_type == "Weekly Line Graph") {
+        new_min_attempts <- 1
+        updateNumericInput(session, "min_attempts", value = new_min_attempts)
+      } else {
+        updateNumericInput(session, "min_attempts", value = new_num)
+      }
+    }
+    
+  }) 
+    #debounce(1000)  # Delay the update by 500 milliseconds (0.5 seconds)
+  
+  
+  
+  x_axis_plot <- reactive({
+    if("Avg Time to Throw" %in% input$x_axis) return(ngs_range()$avg_time_to_throw)
+    if("Avg Completed Air Yards" %in% input$x_axis) return(ngs_range()$avg_completed_air_yards)
+    if("Avg Intended Air Yards" %in% input$x_axis) return(ngs_range()$avg_intended_air_yards)
+    if("Avg Air Yards Differential" %in% input$x_axis) return(ngs_range()$avg_air_yards_differential)
+    if("Aggressiveness" %in% input$x_axis) return(ngs_range()$aggressiveness)
+    if("Max Completed Air Distance" %in% input$x_axis) return(ngs_range()$max_completed_air_distance)
+    if("Avg Air Yards to Sticks" %in% input$x_axis) return(ngs_range()$avg_air_yards_to_sticks)
+    if("Attempts" %in% input$x_axis) return(ngs_range()$attempts)
+    if("Passing Yards" %in% input$x_axis) return(ngs_range()$pass_yards)
+    if("Passing Touchdowns" %in% input$x_axis) return(ngs_range()$pass_touchdowns)
+    if("Interceptions" %in% input$x_axis) return(ngs_range()$interceptions)
+    if("Passer Rating" %in% input$x_axis) return(ngs_range()$passer_rating)
+    if("Completions" %in% input$x_axis) return(ngs_range()$completions)
+    if("Completion %" %in% input$x_axis) return(ngs_range()$completion_percentage)
+    if("CPOE (NGS)" %in% input$x_axis) return(ngs_range()$completion_percentage_above_expectation)
+    if("Yards per Attempt" %in% input$x_axis) return(ngs_range()$yards_per_attempt)
+    if("TD %" %in% input$x_axis) return(ngs_range()$td_percent)
+    if("INT %" %in% input$x_axis) return(ngs_range()$int_percent)
+    if("Passer Rating" %in% input$x_axis) return(ngs_range()$passer_rating)
+    if("EPA/Play" %in% input$x_axis) return(ngs_range()$epa_play)
+    if("Total EPA" %in% input$x_axis) return(ngs_range()$total_epa)
+    if("Completion % Over Expected" %in% input$x_axis) return(ngs_range()$cpoe)
+    if("EPA per Scramble" %in% input$x_axis) return(ngs_range()$epa_scramble)
+    if("Success Rate" %in% input$x_axis) return(ngs_range()$sr)
+    if("Air EPA per Play" %in% input$x_axis) return(ngs_range()$air_epa)
+    if("YAC per Completion" %in% input$x_axis) return(ngs_range()$yac_comp)
+    if("No-Huddle Rate" %in% input$x_axis) return(ngs_range()$no_huddle_rate)
+    if("Scramble Rate" %in% input$x_axis) return(ngs_range()$scramble_rate)
+    if("Sack Rate" %in% input$x_axis) return(ngs_range()$sack_rate)
+    if("QB Hit Rate" %in% input$x_axis) return(ngs_range()$qb_hit_rate)
+    if("Explosive Pass Rate" %in% input$x_axis) return(ngs_range()$explosive_pass_rate)
+    if("Expected Completion %" %in% input$x_axis) return(ngs_range()$exp_comp)
+    if("Expected Completion % (NGS)" %in% input$x_axis) return(ngs_range()$exp_completion_percentage)
+    if("Yards per Completion" %in% input$x_axis) return(ngs_range()$yards_comp)
+    if("Yards per Scramble" %in% input$x_axis) return(ngs_range()$yards_scramble)
+    if("Passing 1st Downs" %in% input$x_axis) return(ngs_range()$pass_first_downs)
+    if("Passing 1st Down %" %in% input$x_axis) return(ngs_range()$pass_first_down_rate)
+    if("Net Yards per Attempt" %in% input$x_axis) return(ngs_range()$ny_a)
+    if("Adjusted Yards per Attempt" %in% input$x_axis) return(ngs_range()$ay_a)
+    if("Adjusted Net Yards per Attempt" %in% input$x_axis) return(ngs_range()$any_a)
+    if("Total Sacks" %in% input$x_axis) return(ngs_range()$tot_sacks)
+    if("Total Sack Yards Lost" %in% input$x_axis) return(ngs_range()$tot_sack_yards)
+    if("Yards Lost per Sack" %in% input$x_axis) return(ngs_range()$yards_sack)
+    if("10+ Yard Completions" %in% input$x_axis) return(ngs_range()$ten_yard_completions)
+    if("20+ Yard Completions" %in% input$x_axis) return(ngs_range()$twenty_yard_completions)
+    if("20+ Air Yard Attempts" %in% input$x_axis) return(ngs_range()$twenty_air_yard_attempts)
+    if("Jersey Number" %in% input$x_axis) return(ngs_range()$jersey_number)
+    if("Height (inches)" %in% input$x_axis) return(ngs_range()$height)
+    if("Draft Pick" %in% input$x_axis) return(ngs_range()$draft_number)
+    if("EPA/Pass" %in% input$x_axis) return(ngs_range()$epa_pass)
+    if("EPA/Rush" %in% input$x_axis) return(ngs_range()$epa_rush)
+    if("Rushing Touchdowns" %in% input$x_axis) return(ngs_range()$rush_touchdowns)
+    if("Total Touchdowns" %in% input$x_axis) return(ngs_range()$tot_touchdowns)
+    if("Fumbles" %in% input$x_axis) return(ngs_range()$fumbles)
+    if("Fumbles Lost" %in% input$x_axis) return(ngs_range()$fumbles_lost)
+    if("Turnovers" %in% input$x_axis) return(ngs_range()$turnovers)
+    if("Fumble %" %in% input$x_axis) return(ngs_range()$fumble_percent)
+    if("Turnover %" %in% input$x_axis) return(ngs_range()$turnover_percent)
+    if("Yards per Rush" %in% input$x_axis) return(ngs_range()$yards_rush)
+    if("Seconds per Play" %in% input$x_axis) return(ngs_range()$seconds_play)
+    
+  })
+  
+  
+  y_axis_plot <- reactive({
+    if("Avg Time to Throw" %in% input$y_axis) return(ngs_range()$avg_time_to_throw)
+    if("Avg Completed Air Yards" %in% input$y_axis) return(ngs_range()$avg_completed_air_yards)
+    if("Avg Intended Air Yards" %in% input$y_axis) return(ngs_range()$avg_intended_air_yards)
+    if("Avg Air Yards Differential" %in% input$y_axis) return(ngs_range()$avg_air_yards_differential)
+    if("Aggressiveness" %in% input$y_axis) return(ngs_range()$aggressiveness)
+    if("Max Completed Air Distance" %in% input$y_axis) return(ngs_range()$max_completed_air_distance)
+    if("Avg Air Yards to Sticks" %in% input$y_axis) return(ngs_range()$avg_air_yards_to_sticks)
+    if("Attempts" %in% input$y_axis) return(ngs_range()$attempts)
+    if("Passing Yards" %in% input$y_axis) return(ngs_range()$pass_yards)
+    if("Passing Touchdowns" %in% input$y_axis) return(ngs_range()$pass_touchdowns)
+    if("Interceptions" %in% input$y_axis) return(ngs_range()$interceptions)
+    if("Passer Rating" %in% input$y_axis) return(ngs_range()$passer_rating)
+    if("Completions" %in% input$y_axis) return(ngs_range()$completions)
+    if("Completion %" %in% input$y_axis) return(ngs_range()$completion_percentage)
+    if("CPOE (NGS)" %in% input$y_axis) return(ngs_range()$completion_percentage_above_expectation)
+    if("Yards per Attempt" %in% input$y_axis) return(ngs_range()$yards_per_attempt)
+    if("TD %" %in% input$y_axis) return(ngs_range()$td_percent)
+    if("INT %" %in% input$y_axis) return(ngs_range()$int_percent)
+    if("Passer Rating" %in% input$y_axis) return(ngs_range()$passer_rating)
+    if("EPA/Play" %in% input$y_axis) return(ngs_range()$epa_play)
+    if("Total EPA" %in% input$y_axis) return(ngs_range()$total_epa)
+    if("Completion % Over Expected" %in% input$y_axis) return(ngs_range()$cpoe)
+    if("EPA per Scramble" %in% input$y_axis) return(ngs_range()$epa_scramble)
+    if("Success Rate" %in% input$y_axis) return(ngs_range()$sr)
+    if("Air EPA per Play" %in% input$y_axis) return(ngs_range()$air_epa)
+    if("YAC per Completion" %in% input$y_axis) return(ngs_range()$yac_comp)
+    if("No-Huddle Rate" %in% input$y_axis) return(ngs_range()$no_huddle_rate)
+    if("Scramble Rate" %in% input$y_axis) return(ngs_range()$scramble_rate)
+    if("Sack Rate" %in% input$y_axis) return(ngs_range()$sack_rate)
+    if("QB Hit Rate" %in% input$y_axis) return(ngs_range()$qb_hit_rate)
+    if("Explosive Pass Rate" %in% input$y_axis) return(ngs_range()$explosive_pass_rate)
+    if("Expected Completion %" %in% input$y_axis) return(ngs_range()$exp_comp)
+    if("Expected Completion % (NGS)" %in% input$y_axis) return(ngs_range()$exp_completion_percentage)
+    if("Yards per Completion" %in% input$y_axis) return(ngs_range()$yards_comp)
+    if("Yards per Scramble" %in% input$y_axis) return(ngs_range()$yards_scramble)
+    if("Passing 1st Downs" %in% input$y_axis) return(ngs_range()$pass_first_downs)
+    if("Passing 1st Down %" %in% input$y_axis) return(ngs_range()$pass_first_down_rate)
+    if("Net Yards per Attempt" %in% input$y_axis) return(ngs_range()$ny_a)
+    if("Adjusted Yards per Attempt" %in% input$y_axis) return(ngs_range()$ay_a)
+    if("Adjusted Net Yards per Attempt" %in% input$y_axis) return(ngs_range()$any_a)
+    if("Total Sacks" %in% input$y_axis) return(ngs_range()$tot_sacks)
+    if("Total Sack Yards Lost" %in% input$y_axis) return(ngs_range()$tot_sack_yards)
+    if("Yards Lost per Sack" %in% input$y_axis) return(ngs_range()$yards_sack)
+    if("10+ Yard Completions" %in% input$y_axis) return(ngs_range()$ten_yard_completions)
+    if("20+ Yard Completions" %in% input$y_axis) return(ngs_range()$twenty_yard_completions)
+    if("20+ Air Yard Attempts" %in% input$y_axis) return(ngs_range()$twenty_air_yard_attempts)
+    if("Jersey Number" %in% input$y_axis) return(ngs_range()$jersey_number)
+    if("Height (inches)" %in% input$y_axis) return(ngs_range()$height)
+    if("Draft Pick" %in% input$y_axis) return(ngs_range()$draft_number)
+    if("EPA/Pass" %in% input$y_axis) return(ngs_range()$epa_pass)
+    if("EPA/Rush" %in% input$y_axis) return(ngs_range()$epa_rush)
+    if("Rushing Touchdowns" %in% input$y_axis) return(ngs_range()$rush_touchdowns)
+    if("Total Touchdowns" %in% input$y_axis) return(ngs_range()$tot_touchdowns)
+    if("Fumbles" %in% input$y_axis) return(ngs_range()$fumbles)
+    if("Fumbles Lost" %in% input$y_axis) return(ngs_range()$fumbles_lost)
+    if("Turnovers" %in% input$y_axis) return(ngs_range()$turnovers)
+    if("Fumble %" %in% input$y_axis) return(ngs_range()$fumble_percent)
+    if("Turnover %" %in% input$y_axis) return(ngs_range()$turnover_percent)
+    if("Yards per Rush" %in% input$y_axis) return(ngs_range()$yards_rush)
+    if("Seconds per Play" %in% input$y_axis) return(ngs_range()$seconds_play)
+  })
+  
+  
+  y_axis_plot_weekly <- reactive({
+    if("Avg Time to Throw" %in% input$y_axis) return(ngs_range_weekly()$avg_time_to_throw)
+    if("Avg Completed Air Yards" %in% input$y_axis) return(ngs_range_weekly()$avg_completed_air_yards)
+    if("Avg Intended Air Yards" %in% input$y_axis) return(ngs_range_weekly()$avg_intended_air_yards)
+    if("Avg Air Yards Differential" %in% input$y_axis) return(ngs_range_weekly()$avg_air_yards_differential)
+    if("Aggressiveness" %in% input$y_axis) return(ngs_range_weekly()$aggressiveness)
+    if("Max Completed Air Distance" %in% input$y_axis) return(ngs_range_weekly()$max_completed_air_distance)
+    if("Avg Air Yards to Sticks" %in% input$y_axis) return(ngs_range_weekly()$avg_air_yards_to_sticks)
+    if("Attempts" %in% input$y_axis) return(ngs_range_weekly()$attempts)
+    if("Passing Yards" %in% input$y_axis) return(ngs_range_weekly()$pass_yards)
+    if("Passing Touchdowns" %in% input$y_axis) return(ngs_range_weekly()$pass_touchdowns)
+    if("Interceptions" %in% input$y_axis) return(ngs_range_weekly()$interceptions)
+    if("Passer Rating" %in% input$y_axis) return(ngs_range_weekly()$passer_rating)
+    if("Completions" %in% input$y_axis) return(ngs_range_weekly()$completions)
+    if("Completion %" %in% input$y_axis) return(ngs_range_weekly()$completion_percentage)
+    if("CPOE (NGS)" %in% input$y_axis) return(ngs_range_weekly()$completion_percentage_above_expectation)
+    if("Yards per Attempt" %in% input$y_axis) return(ngs_range_weekly()$yards_per_attempt)
+    if("TD %" %in% input$y_axis) return(ngs_range_weekly()$td_percent)
+    if("INT %" %in% input$y_axis) return(ngs_range_weekly()$int_percent)
+    if("Passer Rating" %in% input$y_axis) return(ngs_range_weekly()$passer_rating)
+    if("EPA/Play" %in% input$y_axis) return(ngs_range_weekly()$epa_play)
+    if("Total EPA" %in% input$y_axis) return(ngs_range_weekly()$total_epa)
+    if("Completion % Over Expected" %in% input$y_axis) return(ngs_range_weekly()$cpoe)
+    if("EPA per Scramble" %in% input$y_axis) return(ngs_range_weekly()$epa_scramble)
+    if("Success Rate" %in% input$y_axis) return(ngs_range_weekly()$sr)
+    if("Air EPA per Play" %in% input$y_axis) return(ngs_range_weekly()$air_epa)
+    if("YAC per Completion" %in% input$y_axis) return(ngs_range_weekly()$yac_comp)
+    if("No-Huddle Rate" %in% input$y_axis) return(ngs_range_weekly()$no_huddle_rate)
+    if("Scramble Rate" %in% input$y_axis) return(ngs_range_weekly()$scramble_rate)
+    if("Sack Rate" %in% input$y_axis) return(ngs_range_weekly()$sack_rate)
+    if("QB Hit Rate" %in% input$y_axis) return(ngs_range_weekly()$qb_hit_rate)
+    if("Explosive Pass Rate" %in% input$y_axis) return(ngs_range_weekly()$explosive_pass_rate)
+    if("Expected Completion %" %in% input$y_axis) return(ngs_range_weekly()$exp_comp)
+    if("Expected Completion % (NGS)" %in% input$y_axis) return(ngs_range_weekly()$exp_completion_percentage)
+    if("Yards per Completion" %in% input$y_axis) return(ngs_range_weekly()$yards_comp)
+    if("Yards per Scramble" %in% input$y_axis) return(ngs_range_weekly()$yards_scramble)
+    if("Passing 1st Downs" %in% input$y_axis) return(ngs_range_weekly()$pass_first_downs)
+    if("Passing 1st Down %" %in% input$y_axis) return(ngs_range_weekly()$pass_first_down_rate)
+    if("Net Yards per Attempt" %in% input$y_axis) return(ngs_range_weekly()$ny_a)
+    if("Adjusted Yards per Attempt" %in% input$y_axis) return(ngs_range_weekly()$ay_a)
+    if("Adjusted Net Yards per Attempt" %in% input$y_axis) return(ngs_range_weekly()$any_a)
+    if("Total Sacks" %in% input$y_axis) return(ngs_range_weekly()$tot_sacks)
+    if("Total Sack Yards Lost" %in% input$y_axis) return(ngs_range_weekly()$tot_sack_yards)
+    if("Yards Lost per Sack" %in% input$y_axis) return(ngs_range_weekly()$yards_sack)
+    if("10+ Yard Completions" %in% input$y_axis) return(ngs_range_weekly()$ten_yard_completions)
+    if("20+ Yard Completions" %in% input$y_axis) return(ngs_range_weekly()$twenty_yard_completions)
+    if("20+ Air Yard Attempts" %in% input$y_axis) return(ngs_range_weekly()$twenty_air_yard_attempts)
+    if("Jersey Number" %in% input$y_axis) return(ngs_range_weekly()$jersey_number)
+    if("Height (inches)" %in% input$y_axis) return(ngs_range_weekly()$height)
+    if("Draft Pick" %in% input$y_axis) return(ngs_range_weekly()$draft_number)
+    if("EPA/Pass" %in% input$y_axis) return(ngs_range_weekly()$epa_pass)
+    if("EPA/Rush" %in% input$y_axis) return(ngs_range_weekly()$epa_rush)
+    if("Rushing Touchdowns" %in% input$y_axis) return(ngs_range_weekly()$rush_touchdowns)
+    if("Total Touchdowns" %in% input$y_axis) return(ngs_range_weekly()$tot_touchdowns)
+    if("Fumbles" %in% input$y_axis) return(ngs_range_weekly()$fumbles)
+    if("Fumbles Lost" %in% input$y_axis) return(ngs_range_weekly()$fumbles_lost)
+    if("Turnovers" %in% input$y_axis) return(ngs_range_weekly()$turnovers)
+    if("Fumble %" %in% input$y_axis) return(ngs_range_weekly()$fumble_percent)
+    if("Turnover %" %in% input$y_axis) return(ngs_range_weekly()$turnover_percent)
+    if("Yards per Rush" %in% input$y_axis) return(ngs_range_weekly()$yards_rush)
+    if("Seconds per Play" %in% input$y_axis) return(ngs_range_weekly()$seconds_play)
+  })
+  
+  original_col <- reactive({
+    switch(input$y_axis,
+           "Avg Time to Throw" = "avg_time_to_throw",
+           "Avg Completed Air Yards" = "avg_completed_air_yards",
+           "Avg Intended Air Yards" = "avg_intended_air_yards",
+           "Avg Air Yards Differential" = "avg_air_yards_differential",
+           "Aggressiveness" = "aggressiveness",
+           "Max Completed Air Distance" = "max_completed_air_distance",
+           "Avg Air Yards to Sticks" = "avg_air_yards_to_sticks",
+           "Attempts" = "attempts",
+           "Passing Yards" = "pass_yards",
+           "Passing Touchdowns" = "pass_touchdowns",
+           "Interceptions" = "interceptions",
+           "Passer Rating" = "passer_rating",
+           "Completions" = "completions",
+           "Completion %" = "completion_percentage",
+           "CPOE (NGS)" = "completion_percentage_above_expectation",
+           "Yards per Attempt" = "yards_per_attempt",
+           "TD %" = "td_percent",
+           "INT %" = "int_percent",
+           "Passer Rating" = "passer_rating",
+           "EPA/Play" = "epa_play",
+           "Total EPA" = "total_epa",
+           "Completion % Over Expected" = "cpoe",
+           "EPA per Scramble" = "epa_scramble",
+           "Success Rate" = "sr",
+           "Air EPA per Play" = "air_epa",
+           "YAC per Completion" = "yac_comp",
+           "No-Huddle Rate" = "no_huddle_rate",
+           "Scramble Rate" = "scramble_rate",
+           "Sack Rate" = "sack_rate",
+           "QB Hit Rate" = "qb_hit_rate",
+           "Explosive Pass Rate" = "explosive_pass_rate",
+           "Expected Completion %" = "exp_comp",
+           "Expected Completion % (NGS)" = "exp_completion_percentage",
+           "Yards per Completion" = "yards_comp",
+           "Yards per Scramble" = "yards_scramble",
+           "Passing 1st Downs" = "pass_first_downs",
+           "Passing 1st Down %" = "pass_first_down_rate",
+           "Net Yards per Attempt" = "ny_a",
+           "Adjusted Yards per Attempt" = "ay_a",
+           "Adjusted Net Yards per Attempt" = "any_a",
+           "Total Sacks" = "tot_sacks",
+           "Total Sack Yards Lost" = "tot_sack_yards",
+           "Yards Lost per Sack" = "yards_sack",
+           "10+ Yard Completions" = "ten_yard_completions",
+           "20+ Yard Completions" = "twenty_yard_completions",
+           "20+ Air Yard Attempts" = "twenty_air_yard_attempts",
+           "Jersey Number" = "jersey_number",
+           "Height (inches)" = "height",
+           "Draft Pick" = "draft_number",
+           "EPA/Pass" = "epa_pass",
+           "EPA/Rush" = "epa_rush",
+           "Rushing Touchdowns" = "rush_touchdowns",
+           "Total Touchdowns" = "tot_touchdowns",
+           "Fumbles" = "fumbles",
+           "Fumbles Lost" = "fumbles_lost",
+           "Turnovers" = "turnovers",
+           "Fumble %" = "fumble_percent",
+           "Turnover %" = "turnover_percent",
+           "Yards per Rush" = "yards_rush",
+           "Seconds per Play" = "seconds_play")
+  })
+  
+  ngs_range <- reactive({
+    data <- readRDS(gzcon(url("https://github.com/Doug-Analytics/Shiny/raw/main/2022_pbp_ngs_df.rds"))) %>%
+      filter(week >= input$week_range[1], week <= input$week_range[2]) %>%
+      group_by(id) %>%
+      summarize(player_short_name = last(player_short_name),
+                Quarterback = last(Quarterback),
+                player_display_name = last(player_display_name),
+                height = last(height),
+                draft_number = last(draft_number),
+                jersey_number = last(jersey_number),
+                team_abbr = last(team_abbr),
+                team_color = last(team_color),
+               # team_color2 = last(team_color2),
+                data_attempts = sum(data_attempts, na.rm = TRUE),
+                attempts = sum(attempts, na.rm = TRUE),
+                completions = sum(completions, na.rm = TRUE),
+                pass_yards = sum(passing_yards, na.rm = TRUE),
+                rush_yards = sum(rushing_yards, na.rm = TRUE),
+                tot_yards = pass_yards + rush_yards,
+                pass_touchdowns = sum(pass_touchdown, na.rm = TRUE),
+                rush_touchdowns = sum(rush_touchdown, na.rm = TRUE),
+                tot_touchdowns = sum(tot_touchdown, na.rm = TRUE),
+                interceptions = sum(interception, na.rm = TRUE),
+                fumbles = sum(tot_fumble, na.rm = TRUE),
+                fumbles_lost = sum(tot_fumble_lost, na.rm = TRUE),
+                turnovers = sum(tot_turnover, na.rm = TRUE), 
+                completion_percentage = completions/attempts,
+                epa_play = sum(qb_epa, na.rm = TRUE)/sum(data_attempts, na.rm = TRUE),
+                total_epa = sum(qb_epa, na.rm = TRUE),
+                exp_comp = sum(cp, na.rm = TRUE)/sum(cp_attempts, na.rm = TRUE),
+                cpoe = sum(cpoe, na.rm = TRUE)/sum(cp_attempts, na.rm = TRUE)/100,
+                sr = sum(success, na.rm = TRUE)/sum(data_attempts, na.rm = TRUE),
+                yac_comp = sum(yards_after_catch, na.rm = TRUE)/sum(completions, na.rm = TRUE),
+                air_epa = sum(air_epa, na.rm = TRUE)/sum(data_attempts, na.rm = TRUE),
+                no_huddle_rate = sum(no_huddle, na.rm = TRUE)/sum(data_attempts, na.rm = TRUE),
+                scramble_rate = sum(qb_scrambles, na.rm = TRUE)/sum(data_attempts, na.rm = TRUE),
+                sack_rate = sum(sacks, na.rm = TRUE)/(sum(attempts, na.rm = TRUE)+sum(sacks, na.rm = TRUE)),
+                pass_first_downs = sum(first_down_pass, na.rm = TRUE),
+                pass_first_down_rate = sum(pass_first_downs, na.rm = TRUE)/sum(attempts, na.rm = TRUE),
+                yards_per_attempt = pass_yards/attempts,
+                yards_comp = pass_yards/completions,
+                td_percent = pass_touchdowns/attempts,
+                int_percent = interceptions/attempts,
+                fumble_percent = fumbles/sum(data_attempts, na.rm = TRUE),
+                turnover_percent = turnovers/sum(data_attempts, na.rm = TRUE),
+                tot_sacks = sum(sacks, na.rm = TRUE),
+                tot_sack_yards = sum(tot_sack_yards, na.rm = TRUE),
+                tot_scramble_yards = sum(tot_scramble_yards, na.rm = TRUE),
+                tot_scramble_epa = sum(tot_scramble_epa, na.rm = TRUE),
+                yards_sack = tot_sack_yards/tot_sacks,
+                yards_rush = sum(rush_yards, na.rm = TRUE) / sum(rush_attempts, na.rm = TRUE),
+                yards_scramble = tot_scramble_yards/sum(qb_scrambles, na.rm = TRUE),
+                epa_scramble = tot_scramble_epa/sum(qb_scrambles, na.rm = TRUE),
+                epa_pass = sum(tot_pass_epa, na.rm = TRUE) /sum(tot_pass, na.rm = TRUE),
+                epa_rush = sum(tot_rush_epa, na.rm = TRUE) /sum(tot_rush, na.rm = TRUE),
+                ten_yard_completions = sum(ten_yard_completions, na.rm = TRUE),
+                twenty_yard_completions = sum(twenty_yard_completions, na.rm = TRUE),
+                explosive_pass_rate = twenty_yard_completions/attempts,
+                twenty_air_yard_attempts = sum(twenty_air_yard_attempts, na.rm = TRUE),
+                seconds_play = sum(att_seconds_per_play, na.rm = TRUE) / sum(data_attempts),
+                
+                ny_a = (pass_yards - tot_sack_yards)/(attempts + tot_sacks),
+                ay_a = (pass_yards + 20*(pass_touchdowns) - 45*(interceptions))/(attempts),
+                any_a = (pass_yards + 20*(pass_touchdowns) - 45*(interceptions) - tot_sack_yards)/(attempts + tot_sacks),
+                passer_rating = ((pmax(0, pmin(2.375, (100*completion_percentage - 30) * 0.05))) +
+                                   pmax(0, pmin(2.375, (yards_per_attempt - 3) * 0.25)) +
+                                   pmax(0, pmin(2.375, 100*td_percent * 0.2)) +
+                                   pmax(0, pmin(2.375, (2.375 - (100*int_percent * 0.25))))) / 6 * 100,
+                avg_time_to_throw = sum(att_avg_time_to_throw, na.rm = TRUE)/sum(attempts_ngs, na.rm = TRUE),
+                avg_completed_air_yards = sum(att_avg_completed_air_yards, na.rm = TRUE)/sum(attempts_ngs, na.rm = TRUE),
+                avg_intended_air_yards = sum(att_avg_intended_air_yards, na.rm = TRUE)/sum(attempts_ngs, na.rm = TRUE),
+                avg_air_yards_differential = avg_completed_air_yards - avg_intended_air_yards,
+                aggressiveness = sum(att_aggressiveness, na.rm = TRUE)/sum(attempts_ngs, na.rm = TRUE)/100,
+                max_completed_air_distance = max(max_completed_air_distance),
+                avg_air_yards_to_sticks = sum(att_avg_air_yards_to_sticks, na.rm = TRUE)/sum(attempts_ngs, na.rm = TRUE),
+                exp_completion_percentage = sum(att_exp_completion_percentage, na.rm = TRUE)/sum(attempts_ngs, na.rm = TRUE)/100,
+                completion_percentage_above_expectation = sum(att_completion_percentage_above_expectation, na.rm = TRUE)/sum(attempts_ngs, na.rm = TRUE)/100) %>%
+      filter(!is.na(data_attempts) & (!is.na(input$min_attempts) & data_attempts >= ifelse(is.null(input$min_attempts) || input$min_attempts == "", 1, input$min_attempts))) %>%
+      mutate(
+        percentile_rank = if (input$plot_type != "Weekly Line Graph" & any(complete.cases(.))) {
+          ecdf(!!sym(original_col()))(!!as.name(original_col()))
+        } else {
+          NA_real_
+        },
+        alpha = case_when(
+          input$plot_type != "Weekly Line Graph" & !is.na(percentile_rank) ~ 0.1 + percentile_rank * 0.9,
+          TRUE ~ 0.1
+        )
+      )
+    
+  })
+  
+  
+  
+  ngs_range_weekly <- reactive({
+    data <- readRDS(gzcon(url("https://github.com/Doug-Analytics/Shiny/raw/main/2022_pbp_ngs_df.rds"))) %>%
+      filter(week >= input$week_range[1], week <= input$week_range[2]) %>%
+      group_by(id, week) %>%
+      summarize(player_short_name = last(player_short_name),
+                Quarterback = last(Quarterback),
+                player_display_name = last(player_display_name),
+                height = last(height),
+                draft_number = last(draft_number),
+                jersey_number = last(jersey_number),
+                team_abbr = last(team_abbr),
+                team_color = last(team_color),
+                # team_color2 = last(team_color2),
+                data_attempts = sum(data_attempts, na.rm = TRUE),
+                attempts = sum(attempts, na.rm = TRUE),
+                completions = sum(completions, na.rm = TRUE),
+                pass_yards = sum(passing_yards, na.rm = TRUE),
+                rush_yards = sum(rushing_yards, na.rm = TRUE),
+                tot_yards = pass_yards + rush_yards,
+                pass_touchdowns = sum(pass_touchdown, na.rm = TRUE),
+                rush_touchdowns = sum(rush_touchdown, na.rm = TRUE),
+                tot_touchdowns = sum(tot_touchdown, na.rm = TRUE),
+                interceptions = sum(interception, na.rm = TRUE),
+                fumbles = sum(tot_fumble, na.rm = TRUE),
+                fumbles_lost = sum(tot_fumble_lost, na.rm = TRUE),
+                turnovers = sum(tot_turnover, na.rm = TRUE), 
+                completion_percentage = completions/attempts,
+                epa_play = sum(qb_epa, na.rm = TRUE)/sum(data_attempts, na.rm = TRUE),
+                total_epa = sum(qb_epa, na.rm = TRUE),
+                exp_comp = sum(cp, na.rm = TRUE)/sum(cp_attempts, na.rm = TRUE),
+                cpoe = sum(cpoe, na.rm = TRUE)/sum(cp_attempts, na.rm = TRUE)/100,
+                sr = sum(success, na.rm = TRUE)/sum(data_attempts, na.rm = TRUE),
+                yac_comp = sum(yards_after_catch, na.rm = TRUE)/sum(completions, na.rm = TRUE),
+                air_epa = sum(air_epa, na.rm = TRUE)/sum(data_attempts, na.rm = TRUE),
+                no_huddle_rate = sum(no_huddle, na.rm = TRUE)/sum(data_attempts, na.rm = TRUE),
+                scramble_rate = sum(qb_scrambles, na.rm = TRUE)/sum(data_attempts, na.rm = TRUE),
+                sack_rate = sum(sacks, na.rm = TRUE)/(sum(attempts, na.rm = TRUE)+sum(sacks, na.rm = TRUE)),
+                pass_first_downs = sum(first_down_pass, na.rm = TRUE),
+                pass_first_down_rate = sum(pass_first_downs, na.rm = TRUE)/sum(attempts, na.rm = TRUE),
+                yards_per_attempt = pass_yards/attempts,
+                yards_comp = pass_yards/completions,
+                td_percent = pass_touchdowns/attempts,
+                int_percent = interceptions/attempts,
+                fumble_percent = fumbles/sum(data_attempts, na.rm = TRUE),
+                turnover_percent = turnovers/sum(data_attempts, na.rm = TRUE),
+                tot_sacks = sum(sacks, na.rm = TRUE),
+                tot_sack_yards = sum(tot_sack_yards, na.rm = TRUE),
+                tot_scramble_yards = sum(tot_scramble_yards, na.rm = TRUE),
+                tot_scramble_epa = sum(tot_scramble_epa, na.rm = TRUE),
+                yards_sack = tot_sack_yards/tot_sacks,
+                yards_rush = sum(rush_yards, na.rm = TRUE) / sum(rush_attempts, na.rm = TRUE),
+                yards_scramble = tot_scramble_yards/sum(qb_scrambles, na.rm = TRUE),
+                epa_scramble = tot_scramble_epa/sum(qb_scrambles, na.rm = TRUE),
+                epa_pass = sum(tot_pass_epa, na.rm = TRUE) /sum(tot_pass, na.rm = TRUE),
+                epa_rush = sum(tot_rush_epa, na.rm = TRUE) /sum(tot_rush, na.rm = TRUE),
+                ten_yard_completions = sum(ten_yard_completions, na.rm = TRUE),
+                twenty_yard_completions = sum(twenty_yard_completions, na.rm = TRUE),
+                explosive_pass_rate = twenty_yard_completions/attempts,
+                twenty_air_yard_attempts = sum(twenty_air_yard_attempts, na.rm = TRUE),
+                seconds_play = sum(att_seconds_per_play, na.rm = TRUE) / sum(data_attempts),
+                
+                ny_a = (pass_yards - tot_sack_yards)/(attempts + tot_sacks),
+                ay_a = (pass_yards + 20*(pass_touchdowns) - 45*(interceptions))/(attempts),
+                any_a = (pass_yards + 20*(pass_touchdowns) - 45*(interceptions) - tot_sack_yards)/(attempts + tot_sacks),
+                passer_rating = ((pmax(0, pmin(2.375, (100*completion_percentage - 30) * 0.05))) +
+                                   pmax(0, pmin(2.375, (yards_per_attempt - 3) * 0.25)) +
+                                   pmax(0, pmin(2.375, 100*td_percent * 0.2)) +
+                                   pmax(0, pmin(2.375, (2.375 - (100*int_percent * 0.25))))) / 6 * 100,
+                avg_time_to_throw = sum(att_avg_time_to_throw, na.rm = TRUE)/sum(attempts_ngs, na.rm = TRUE),
+                avg_completed_air_yards = sum(att_avg_completed_air_yards, na.rm = TRUE)/sum(attempts_ngs, na.rm = TRUE),
+                avg_intended_air_yards = sum(att_avg_intended_air_yards, na.rm = TRUE)/sum(attempts_ngs, na.rm = TRUE),
+                avg_air_yards_differential = avg_completed_air_yards - avg_intended_air_yards,
+                aggressiveness = sum(att_aggressiveness, na.rm = TRUE)/sum(attempts_ngs, na.rm = TRUE)/100,
+                max_completed_air_distance = max(max_completed_air_distance),
+                avg_air_yards_to_sticks = sum(att_avg_air_yards_to_sticks, na.rm = TRUE)/sum(attempts_ngs, na.rm = TRUE),
+                exp_completion_percentage = sum(att_exp_completion_percentage, na.rm = TRUE)/sum(attempts_ngs, na.rm = TRUE)/100,
+                completion_percentage_above_expectation = sum(att_completion_percentage_above_expectation, na.rm = TRUE)/sum(attempts_ngs, na.rm = TRUE)/100) %>%
+      filter(if (is_empty(input$qb_highlight)) TRUE else Quarterback %in% input$qb_highlight)
+
+  
+  })
+  
+  
+  values <- reactiveValues(selected_qb = NULL)
+  
+  ngs_range_highlight <- reactive({
+    ngs_range() %>%      
+      arrange(y_axis_plot(), player_short_name)
+  })
+  
+  filtered_qb_names <- reactive({
+    if (input$plot_type == "Scatter Plot" || input$plot_type == "Bar Graph") {
+      ngs_range() %>%
+        arrange(team_abbr) %>%
+        distinct(Quarterback)
+    } else {
+      data <- readRDS(gzcon(url("https://github.com/Doug-Analytics/Shiny/raw/main/2022_pbp_ngs_df.rds"))) %>%
+        filter(week >= input$week_range[1], week <= input$week_range[2]) %>%
+        arrange(team_abbr) %>%
+        group_by(Quarterback) %>%
+        distinct(Quarterback)
+    }
+  })
+  
+  
+  observe({
+    updateSelectInput(session, "qb_highlight", 
+                      choices = filtered_qb_names(), 
+                      selected = values$selected_qb)
+  })
+  
+  observeEvent(input$qb_highlight, 
+    values$selected_qb <- input$qb_highlight)
+    
+  
+  qb_highlight <- reactive({
+    if (input$plot_type == "Scatter Plot" && is.null(input$qb_highlight)) {
+      alpha_values <- rep(1, nrow(ngs_range()))
+    } else if (is.null(input$qb_highlight)) {
+      alpha_values <- ngs_range()$alpha
+    } else {
+      alpha_values <- ifelse(ngs_range()$Quarterback %in% input$qb_highlight, 1, 0.1)
+    }
+    return(alpha_values)
+  })
+  
+  qb_highlight_weekly <- reactive({
+    if (input$plot_type == "Scatter Plot" && is.null(input$qb_highlight)) {
+      highlighted_qbs <- character()
+    } else if (is.null(input$qb_highlight)) {
+      highlighted_qbs <- ngs_range_weekly()$player_short_name
+    } else {
+      highlighted_qbs <- ngs_range_weekly()$player_short_name[ngs_range_weekly()$Quarterback %in% input$qb_highlight]
+    }
+    return(highlighted_qbs)
+  })
+  
+  qb_highlight_weekly_full <- reactive({
+    if (input$plot_type == "Scatter Plot" && is.null(input$qb_highlight)) {
+      highlighted_qbs_full <- character()
+    } else if (is.null(input$qb_highlight)) {
+      highlighted_qbs_full <- ngs_range_weekly()$player_display_name
+    } else {
+      highlighted_qbs_full <- ngs_range_weekly()$player_display_name[ngs_range_weekly()$Quarterback %in% input$qb_highlight]
+    }
+    return(highlighted_qbs_full)
+  })
+  
+  
+  qb_highlight_size <- reactive({
+    if (input$plot_type == "Bar Graph" && is.null(input$qb_highlight)) {
+      highlight_size_values <- rep(1, nrow(ngs_range()))
+    } else if (is.null(input$qb_highlight)) {
+      highlight_size_values <- ngs_range()$alpha
+    } else {
+      highlight_size_values <- ifelse(ngs_range_highlight()$Quarterback %in% input$qb_highlight, 1, 0.4)
+    }
+  })
+  
+  qb_highlight_alpha <- reactive({
+    if (input$bar_values_checkbox) {
+      if (is.null(input$qb_highlight)) {
+        alpha_values <- rep(1, nrow(ngs_range()))
+      } else {
+        alpha_values <- ifelse(ngs_range()$Quarterback %in% input$qb_highlight, 1, 0)
+        alpha_values[!ngs_range()$Quarterback %in% input$qb_highlight] <- 0
+      }
+    } else {
+      alpha_values <- rep(0, nrow(ngs_range()))
+    }
+    return(alpha_values)
+  })
+  
+  
+  color_values <- reactive({
+    input$qb_highlight
+    
+    if (is.null(input$qb_highlight)) {
+      color_values <- ngs_range()$team_color
+    } else {
+      color_values <- ifelse(ngs_range()$Quarterback %in% input$qb_highlight, ngs_range()$team_color, "grey70")
+    }
+    return(color_values)
+  })
+  
+  
+  size_values <- reactive({
+    input$qb_highlight
+    
+    if (is.null(input$qb_highlight)) {
+      size_values <- rep(1, nrow(ngs_range()))
+    } else {
+      size_values <- ifelse(ngs_range()$Quarterback %in% input$qb_highlight, 4, 2)
+    }
+    return(size_values)
+  })
+  
+  
+  text_values <- reactive({
+    input$qb_highlight
+    
+    if (is.null(input$qb_highlight)) {
+      text_values <- 3.5
+    } else {
+      text_values <- ifelse(ngs_range()$Quarterback %in% input$qb_highlight, 4.5, 3.5)
+    }
+    return(text_values)
+  })
+  
+  
+  
+  num_qbs_highlighted <- reactive({
+    length(input$qb_highlight)
+  })
+  
+  reactive({
+    if (num_qbs_highlighted == 0) {
+      qb_names <- ""
+    } else if (num_qbs_highlighted == 1) {
+      qb_names <- paste0("<span style='color:red; font-weight:bold'> | ", input$qb_highlight, " highlighted</span>")
+    } else if (num_qbs_highlighted <= 2) {
+      qb_names <- paste0("<span style='color:red; font-weight:bold'> | ", paste(input$qb_highlight, collapse = " & "), " highlighted</span>")
+    } else {
+      qb_names <- "<span style='color:red; font-weight:bold'> | Multiple QBs highlighted</span>"
+    }
+  })
+  
+  max_overlaps <- reactive({
+    if (!is.null(input$qb_highlight) && input$qb_highlight != "") {
+      999
+    } else {
+      10
+    }
+  })
+  
+  
+  r_squared <- reactive(round(summary(lm(y_axis_plot() ~ x_axis_plot()))$r.squared, 3))
+  r_squared_text <- reactive(paste0("R\u00B2 = ", format(r_squared(), nsmall = 3)))
+  
+  avg_value <- reactive(mean(y_axis_plot()))
+  
+  
+  
+  output$plot <- renderPlot({
+    
+    if (nrow(ngs_range()) == 0 && input$lock_attempts > 0) {
+      # Display custom error message using showModal()
+      showModal(modalDialog(
+        title = "Error",
+        "Silly goose! You filtered too much.  Adjust the Week Range or Minimum QB Plays.",
+        easyClose = TRUE,
+        footer = NULL
+      ))
+    }
+    else {
+    
+    if(input$plot_type == "Scatter Plot") {
+      
+      p <- ggplot(ngs_range(), aes_string(x = x_axis_plot(), y = y_axis_plot())) +
+        ggtitle(ifelse(input$title != "", input$title, paste(input$y_axis, "vs.", input$x_axis)),
+                #subtitle <- paste(subtitle_line1(), "<br>", subtitle_line2, sep = "")
+        )
+      if (input$trendline_checkbox) {
+        p <- p + geom_smooth(method = "lm", formula = 'y ~ x',se = FALSE, color = "Grey69", linetype = "solid", alpha=0.1, linewidth = 1)
+      }
+      
+      if (input$avg_line_checkbox) {
+        p <- p +  geom_vline(xintercept = mean(x_axis_plot()), color = "red", linetype = "dashed", alpha=0.4, linewidth = 0.5) +
+          geom_hline(yintercept =  mean(y_axis_plot()), color = "red", linetype = "dashed", alpha=0.4, linewidth = 0.5)
+      }
+      
+      p <- p +   geom_point(color = color_values(), size = size_values(), alpha = 1)   +
+        #geom_nfl_logos(aes(team_abbr = team_abbr), width = 0.025, alpha = 0.8) +
+        geom_text_repel(aes(label = player_short_name), color = ngs_range()$team_color, alpha = qb_highlight(), size = text_values(), force = 1, max.overlaps = max_overlaps()) +
+        scale_x_continuous(labels = if (input$x_axis %in% c("Success Rate", "Completion % Over Expected", "Expected Completion %", "Aggressiveness", "CPOE (NGS)", "Expected Completion % (NGS)", "Completion %", "TD %", "INT %", "Passing 1st Down %", "No-Huddle Rate", "Scramble Rate", "Sack Rate", "Explosive Pass Rate", "Fumble %", "Turnover %")) scales::percent_format() else scales::number_format()) +
+        scale_y_continuous(labels = if (input$y_axis %in% c("Success Rate", "Completion % Over Expected", "Expected Completion %", "Aggressiveness", "CPOE (NGS)", "Expected Completion % (NGS)", "Completion %", "TD %", "INT %", "Passing 1st Down %", "No-Huddle Rate", "Scramble Rate", "Sack Rate", "Explosive Pass Rate", "Fumble %", "Turnover %")) scales::percent_format() else scales::number_format()) +
+        theme(
+          plot.title = element_text(size = ifelse(nchar(ifelse(input$title != "", input$title, paste(input$y_axis, "vs.", input$x_axis))) > 600000, 15, 15), hjust = 0, face = "bold"),
+          plot.subtitle = element_markdown(size = 11, hjust = 0, lineheight = 0.8),
+          axis.title.x = element_text(size = 12, face = "bold"),
+          axis.title.y = element_text(size = 12, face = "bold"),
+          axis.text.x = element_text(size = 11, face = "bold"),
+          axis.text.y = element_text(size = 11, face = "bold"),
+          plot.caption = element_text(size = 8, color = "grey20", hjust = 1, face = "bold"),
+          panel.background = element_rect(fill = "grey98"),
+          plot.background = element_rect(fill = "grey96", colour = NA),
+          panel.grid.major = element_line(colour = "grey90"),
+          panel.grid.minor = element_line(colour = "grey95"),
+          axis.line.x.top = element_line(size = 1, colour = "grey98"),
+          axis.line.y.right = element_line(size = 1, colour = "grey98"),
+          axis.line.x.bottom = element_line(size = 1, colour = "black"),
+          axis.line.y.left = element_line(size = 1, colour = "black")
+        ) +
+        xlab(ifelse(input$x_axis == "Explosive Pass Rate", "Explosive Pass Rate (20+ Yard Completions)", input$x_axis)) +
+        ylab(ifelse(input$y_axis == "Explosive Pass Rate", "Explosive Pass Rate (20+ Yard Completions)", input$y_axis)) +
+        labs(
+          caption = if (input$x_axis %in% c("Avg Time to Throw","Avg Completed Air Yards", "Avg Intended Air Yards", "Avg Air Yards Differential", "Aggressiveness", "Max Completed Air Distance", "Avg Air Yards to Sticks", "CPOE (NGS)", "Expected Completion % (NGS)") |
+                        input$y_axis %in% c("Avg Time to Throw","Avg Completed Air Yards", "Avg Intended Air Yards", "Avg Air Yards Differential", "Aggressiveness", "Max Completed Air Distance", "Avg Air Yards to Sticks", "CPOE (NGS)", "Expected Completion % (NGS)")) {
+            if (input$x_axis %in% c("Avg Time to Throw","Avg Completed Air Yards", "Avg Intended Air Yards", "Avg Air Yards Differential", "Aggressiveness", "Max Completed Air Distance", "Avg Air Yards to Sticks", "CPOE (NGS)", "Expected Completion % (NGS)") &
+                input$y_axis %in% c("Avg Time to Throw","Avg Completed Air Yards", "Avg Intended Air Yards", "Avg Air Yards Differential", "Aggressiveness", "Max Completed Air Distance", "Avg Air Yards to Sticks", "CPOE (NGS)", "Expected Completion % (NGS)")) {
+              "Twitter: @Doug_Analytics | Data: NGS"
+            } else {
+              "Twitter: @Doug_Analytics | Data: NGS, nflfastR"
+            }
+          } else {
+            "Twitter: @Doug_Analytics | Data: nflfastR"
+          },
+          subtitle = paste("Season: ", 
+                           paste0("<span style='color:royalblue4; font-weight:bold'>", "2022", "</span>"), 
+                           "  |  ", 
+                           ifelse(input$week_range[1] == input$week_range[2],
+                                  "Week ",
+                                  "Weeks "),
+                           paste0("<span style='color:royalblue4; font-weight:bold'>", input$week_range[1], "</span>"),
+                           ifelse(input$week_range[1] == input$week_range[2],
+                                  "",
+                                  paste0(" - <span style='color:royalblue4; font-weight:bold'>", input$week_range[2], "</span>")),
+                           "  |  Minimum QB Plays: ",
+                           paste0("<span style='color:royalblue4; font-weight:bold'>", ifelse(is.na(input$min_attempts),0,input$min_attempts), "</span>"),
+                           "\n\n",
+                           "<span style='font-size:8pt;'><b><span style='color:royalblue4;'>Doug-Analytics.shinyapps.io/DOUG</span></b></span>",
+                           sep = ""
+          )
+          
+        ) +
+        
+        coord_cartesian(clip = "off") +
+        annotate("text", 
+                 x = max(x_axis_plot()) - 0.085 * diff(range(x_axis_plot())), 
+                 y = max(y_axis_plot()) + 0.065 * diff(range(y_axis_plot())), 
+                 hjust = 0, 
+                 vjust = 0,
+                 label = as.character(r_squared_text()))
+      
+      
+      
+      
+      
+    } else if (input$plot_type == "Bar Graph") {
+      
+      p <- ggplot(ngs_range(), aes_string(y = y_axis_plot())) +
+        ggtitle(ifelse(input$title != "", input$title, paste("QB", input$y_axis)),
+        )
+      
+      if (input$avg_line_checkbox) {
+        p <- p +  geom_hline(yintercept =  mean(y_axis_plot()), color = "red", linetype = "dashed", alpha=0.4, linewidth = 0.5)
+      }
+      
+      p <- p + geom_bar(aes(fill = ngs_range()$team_color, x = reorder(ngs_range()$player_short_name, y_axis_plot())), alpha = qb_highlight(), stat = "identity", width = 0.7) +
+        #geom_nfl_logos(aes(team_abbr = team_abbr), width = 0.025, alpha = 0.5) +
+        geom_text(mapping = aes(y = ifelse(y_axis_plot() >= 0, y_axis_plot() + 0.035 * diff(range(y_axis_plot())), y_axis_plot() - 0.02 * diff(range(y_axis_plot()))), x = ngs_range()$player_short_name), 
+                  label = if (input$y_axis %in% c("Success Rate", "Completion % Over Expected", "Expected Completion %", "Aggressiveness", "CPOE (NGS)", "Expected Completion % (NGS)", "Completion %", "TD %", "INT %", "Passing 1st Down %", "No-Huddle Rate", "Scramble Rate", "Sack Rate", "Explosive Pass Rate", "Fumble %", "Turnover %")) {
+                    paste0(100*round(y_axis_plot(), 2), "%")
+                  } else {
+                    round(y_axis_plot(), 2)
+                  },
+                  cex = 2.5, color = "black", alpha = qb_highlight_alpha()) +
+        scale_y_continuous(labels = if (input$y_axis %in% c("Success Rate", "Completion % Over Expected", "Expected Completion %", "Aggressiveness", "CPOE (NGS)", "Expected Completion % (NGS)", "Completion %", "TD %", "INT %", "Passing 1st Down %", "No-Huddle Rate", "Scramble Rate", "Sack Rate", "Explosive Pass Rate", "Fumble %", "Turnover %")) scales::percent_format() else scales::number_format()) +
+        geom_text(mapping = aes(y = avg_value() + 0.038 * diff(range(y_axis_plot()))), x = 1, label = paste("Average: ", if (input$y_axis %in% c("Success Rate", "Completion % Over Expected", "Expected Completion %", "Aggressiveness", "CPOE (NGS)", "Expected Completion % (NGS)", "Completion %", "TD %", "INT %", "Passing 1st Down %", "No-Huddle Rate", "Scramble Rate", "Sack Rate", "Explosive Pass Rate")) {
+          paste0(100*round(avg_value(), 2), "%")
+        } else {
+          round(avg_value(), 2)
+        }), cex = 3, color = "grey50", alpha = ifelse(input$avg_line_checkbox, 1, 0), hjust = -0.05) +
+        #     stat_ecdf(aes(alpha = after_stat(y)), geom = "step", size = 1) +
+        scale_alpha(range = c(0.1, 1), guide = "none") +
+        scale_color_identity(aesthetics = c("fill", "color")) +
+        geom_text(mapping = aes(x = ngs_range()$player_short_name, 
+                                y = ifelse(min(y_axis_plot()) >= 0, -0.1 * diff(range(y_axis_plot())),
+                                           min(y_axis_plot()) + -0.06 * diff(range(y_axis_plot())))), 
+                  label = rank(-y_axis_plot(), ties.method = "min"), cex = 2) +
+        theme(
+          plot.title = element_text(
+            size = ifelse(nchar(ifelse(input$title != "", input$title, paste(input$y_axis, "vs.", input$x_axis))) > 600000, 15, 15), 
+            hjust = 0, 
+            face = "bold"),
+          panel.background = element_rect(fill = "grey98"),
+          plot.background = element_rect(fill = "grey96", colour = NA),
+          panel.grid.major = element_line(colour = "grey95"),
+          panel.grid.minor = element_line(colour = "grey97"),
+          axis.line.x.top = element_line(size = 1, colour = "grey98"),
+          axis.line.y.right = element_line(size = 1, colour = "grey98"),
+          axis.line.x.bottom = element_line(size = 1, colour = "black"),
+          axis.line.y.left = element_line(size = 1, colour = "black"),
+          plot.subtitle = element_markdown(size = 11, hjust = 0, lineheight = 0.8),
+          axis.title.x = element_text(size = 12, face = "bold"),
+          axis.title.y = element_text(size = 12, face = "bold"),
+          axis.text.x = element_text(
+            size = ifelse(nrow(ngs_range()) > 50, 6, ifelse(nrow(ngs_range()) > 40, 8, 9))*qb_highlight_size(),
+            angle = 45, 
+            vjust = 1, 
+            hjust = 1
+          ),
+          axis.text.y = element_text(size = 11, face = "bold"),
+          plot.caption = element_text(size = 8, color = "grey20", hjust = 1, face = "bold")) +
+        xlab("") +
+        ylab(ifelse(input$y_axis == "Explosive Pass Rate", "Explosive Pass Rate (20+ Yard Completions)", input$y_axis)) +
+        labs(
+          caption = if (input$y_axis %in% c("Avg Time to Throw","Avg Completed Air Yards", "Avg Intended Air Yards", "Avg Air Yards Differential", "Aggressiveness", "Max Completed Air Distance", "Avg Air Yards to Sticks", "CPOE (NGS)", "Expected Completion % (NGS)")) {
+            "Twitter: @Doug_Analytics | Data: NGS"
+          } else {
+            "Twitter: @Doug_Analytics | Data: nflfastR"
+          },
+          subtitle = paste("Season: ", 
+                           paste0("<span style='color:royalblue4; font-weight:bold'>", "2022", "</span>"), 
+                           "  |  ", 
+                           ifelse(input$week_range[1] == input$week_range[2],
+                                  "Week ",
+                                  "Weeks "),
+                           paste0("<span style='color:royalblue4; font-weight:bold'>", input$week_range[1], "</span>"),
+                           ifelse(input$week_range[1] == input$week_range[2],
+                                  "",
+                                  paste0(" - <span style='color:royalblue4; font-weight:bold'>", input$week_range[2], "</span>")),
+                           "  |  Minimum QB Plays: ",
+                           paste0("<span style='color:royalblue4; font-weight:bold'>", ifelse(is.na(input$min_attempts),0,input$min_attempts), "</span>"),
+                           "\n\n",
+                           "<span style='font-size:8pt;'><b><span style='color:royalblue4;'>Doug-Analytics.shinyapps.io/DOUG</span></b></span>",
+                           sep = ""
+          )
+        ) +
+        
+        coord_cartesian(clip = "off")
+    }
+    
+    
+   else if (input$plot_type == "Weekly Line Graph") {
+     
+     highlighted_qbs <- ngs_range_weekly()$player_short_name[input$qb_highlight]
+     qb_colors <- unique(ngs_range_weekly()$team_color[ngs_range_weekly()$Quarterback %in% input$qb_highlight])
+     qb_names <- unique(qb_highlight_weekly())
+     qb_colors <- ifelse(qb_colors == "", "royalblue4", qb_colors)
+     qb_colors <- ifelse(is.na(qb_colors), "royalblue4", qb_colors) 
+     qb_colors <- ifelse(length(qb_colors) > 1, "royalblue4", qb_colors)
+     
+    
+     p <- ggplot(ngs_range_weekly(), aes_string(y = y_axis_plot_weekly())) +
+       ggtitle(ifelse(input$title != "", input$title, ifelse(length(input$qb_highlight) == 1, paste(qb_highlight_weekly_full(), "Weekly", input$y_axis), paste("Weekly QB", input$y_axis))))
+     
+    
+    p <- p + geom_line(aes(x = ngs_range_weekly()$week, color = ngs_range_weekly()$team_color, group = ngs_range_weekly()$Quarterback), na.rm = TRUE) +
+
+      geom_point(aes(x = ngs_range_weekly()$week), color = ngs_range_weekly()$team_color) +
+      scale_color_identity(aesthetics = c("fill", "color")) +
+    
+      scale_x_continuous(breaks = ngs_range_weekly()$week, labels = ngs_range_weekly()$week) +
+      scale_y_continuous(labels = if (input$y_axis %in% c("Success Rate", "Completion % Over Expected", "Expected Completion %", "Aggressiveness", "CPOE (NGS)", "Expected Completion % (NGS)", "Completion %", "TD %", "INT %", "Passing 1st Down %", "No-Huddle Rate", "Scramble Rate", "Sack Rate", "Explosive Pass Rate", "Fumble %", "Turnover %")) scales::percent_format() else scales::number_format()) +
+      scale_alpha(range = c(0.1, 1), guide = "none") +
+      theme(
+        plot.title = element_text(
+          size = ifelse(nchar(ifelse(input$title != "", input$title, paste(input$y_axis, "vs.", input$x_axis))) > 600000, 15, 15), 
+          hjust = 0, 
+          face = "bold"
+        ),
+        plot.subtitle = element_markdown(size = 11, hjust = 0, lineheight = 0.8),
+        axis.title.x = element_text(size = 12, face = "bold"),
+        axis.title.y = element_text(size = 12, face = "bold"),
+        axis.text.x = element_text(
+          size = 9
+        ),
+        axis.text.y = element_text(size = 11, face = "bold"),
+        plot.caption = element_text(size = 8, color = "grey20", hjust = 1, face = "bold"),
+        panel.background = element_rect(fill = "grey98"),
+        plot.background = element_rect(fill = "grey96", colour = NA),
+        panel.grid.major = element_line(colour = "grey90"),
+        panel.grid.minor = element_line(colour = "grey95"),
+        axis.line.x.top = element_line(size = 1, colour = "grey98"),
+        axis.line.y.right = element_line(size = 1, colour = "grey98"),
+        axis.line.x.bottom = element_line(size = 1, colour = "black"),
+        axis.line.y.left = element_line(size = 1, colour = "black"),) +
+      xlab("Week") +
+      ylab(ifelse(input$y_axis == "Explosive Pass Rate", "Explosive Pass Rate (20+ Yard Completions)", input$y_axis)) +
+      labs(
+        color = "Quarterback",
+        caption = if (input$y_axis %in% c("Avg Time to Throw","Avg Completed Air Yards", "Avg Intended Air Yards", "Avg Air Yards Differential", "Aggressiveness", "Max Completed Air Distance", "Avg Air Yards to Sticks", "CPOE (NGS)", "Expected Completion % (NGS)")) {
+          "Twitter: @Doug_Analytics | Data: NGS"
+        } else {
+          "Twitter: @Doug_Analytics | Data: nflfastR"
+        },
+        subtitle = paste("Season: ", 
+                         paste0("<span style='color:royalblue4; font-weight:bold'>", "2022", "</span>"), 
+                         "  |  ", 
+                         ifelse(input$week_range[1] == input$week_range[2],
+                                "Week ",
+                                "Weeks "),
+                         paste0("<span style='color:royalblue4; font-weight:bold'>", input$week_range[1], "</span>"),
+                         ifelse(input$week_range[1] == input$week_range[2],
+                                "",
+                                paste0(" - <span style='color:royalblue4; font-weight:bold'>", input$week_range[2], "</span>")),
+                         if(length(input$qb_highlight) == 0){
+                           paste0(" <span style='color:black; font-weight:bold'>| All ", "QBs", "</span>")
+                         } else if(length(input$qb_highlight) == 1) {
+                           "" # no additional text for one quarterback
+                         } else if(length(input$qb_highlight) >= 2 & length(input$qb_highlight) <= 4) {
+                           paste0(" <span style='color:black; font-weight:bold'>| ", "Quarterbacks: ", "</span>", 
+                                  paste0("<span style='color:", qb_colors, "; font-weight:bold'>", 
+                                         paste(qb_names, collapse = ", "), 
+                                         "</span>")
+                           )
+                         } else {
+                           paste0(" <span style='color:black; font-weight:bold'>| ", "Quarterbacks: Multiple", "</span>")
+                         },
+                         "\n", # one \n for the third line to make it blank
+                         "\n", # one \n for the fourth line to make it blank
+                         "\n", # one \n for the fifth line to make it blank
+                         "<span style='font-size:8pt;'><b><span style='color:royalblue4;'>Doug-Analytics.shinyapps.io/DOUG</span></b></span>",
+                         sep = ""
+        )
+        
+      ) +
+      guides(color = guide_legend(title = "Quarterback")) +
+        
+      coord_cartesian(clip = "off")
+  }
+    
+    
+    ggdraw() +
+      draw_plot(p) +
+      draw_image(image, x = 0.88, y = 0.87, width = 0.12, height = 0.12, clip = "off")
+    
+    }
+    
+  })
+  
+
+  output$downloadPlot <- downloadHandler(
+    filename = function() {
+      week_range <- paste(ifelse(input$week_range[1] == input$week_range[2], " ~ Week ", " ~ Weeks "),
+                          input$week_range[1], 
+                          ifelse(input$week_range[1] == input$week_range[2], "", 
+                                 paste(" -", input$week_range[2])), 
+                          sep = "")
+      if (input$plot_type == "Weekly Line Graph") {
+        week_range <- paste(" Weekly", week_range)
+      }
+      file_name <- paste(ifelse(input$y_axis == "EPA/Play", "EPA per Play", input$y_axis), 
+                         ifelse(input$plot_type == "Bar Graph" | input$plot_type == "Weekly Line Graph", "", paste(" vs. ", input$x_axis)),
+                         week_range, 
+                         ifelse(nchar(input$title) > 0, paste0(" (", input$title, ")"), ""), 
+                         ".png", 
+                         sep = "")
+      
+      return(file_name)
+    },
+    content = function(file) {
+      ggsave(file, width = 8, height = 6, dpi = 300, type = "cairo")
+    }
+  )
+  }
+
+
+shinyApp(ui = ui, server = server)
+
+
+
