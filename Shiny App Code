@@ -11,7 +11,8 @@ library(ggtext)
 library(shinythemes)
 options(scipen = 9999)
 
-url <- "https://i.imgur.com/WKmeVMI.png"
+
+url <- "https://i.imgur.com/KkChzbk.png"
 image <- image_read(url)
 
 ################################################################################
@@ -27,7 +28,7 @@ ui <- fluidPage(
   ),
   
   tags$head(
-    tags$link(rel = "shortcut icon", href = "https://i.imgur.com/WKmeVMI.png")
+    tags$link(rel = "shortcut icon", href = "https://i.imgur.com/KkChzbk.png")
   ),
   splitLayout(cellWidths = c(175, 230),
               cellArgs = list(style = "padding: 10px"),
@@ -43,7 +44,7 @@ ui <- fluidPage(
   sidebarLayout(
     sidebarPanel(
       
-      radioButtons("plot_type", "Plot Type:", choices = c("Scatter Plot", "Bar Graph", "Weekly Line Graph")),
+      radioButtons("plot_type", "Plot Type:", choices = c("Scatter Plot", "Bar Graph", "Weekly Line Graph"), selected = "Scatter Plot"),
       
       selectInput("y_axis",
                   "Y Axis:",
@@ -78,7 +79,7 @@ ui <- fluidPage(
       sliderInput("week_range",
                   "Week Range:",
                   min = 1, max = 22,
-                  value = c(1, 18),
+                  value = c(1, 1),
                   step = 1,
                   sep = ""),
       #tags$label(h3("Minimum Attempts"), style="font-size: 16px; font-weight: bold;"),
@@ -86,7 +87,7 @@ ui <- fluidPage(
         condition = "(input.plot_type == 'Bar Graph' || input.plot_type == 'Scatter Plot')",
          numericInput("min_attempts",
                    "Minimum QB Plays:",
-                   value = 270, min = 1)),
+                   value = 15, min = 1)),
       conditionalPanel(
         condition = "(input.plot_type == 'Bar Graph' || input.plot_type == 'Scatter Plot')",
       checkboxInput("lock_attempts",
@@ -409,7 +410,7 @@ server <- function(input, output, session) {
   })
   
   ngs_range <- reactive({
-    data <- readRDS(gzcon(url("https://github.com/Doug-Analytics/Shiny/raw/main/2022_pbp_ngs_df.rds"))) %>%
+    data <- readRDS(gzcon(url("https://github.com/Doug-Analytics/Shiny/raw/main/2023_pbp_ngs_df_new.rds"))) %>%
       filter(week >= input$week_range[1], week <= input$week_range[2]) %>%
       group_by(id) %>%
       summarize(player_short_name = last(player_short_name),
@@ -494,7 +495,7 @@ server <- function(input, output, session) {
         },
         alpha = case_when(
           input$plot_type != "Weekly Line Graph" & !is.na(percentile_rank) ~ 0.1 + percentile_rank * 0.9,
-          TRUE ~ 0.1
+          TRUE ~ 0.7
         )
       )
     
@@ -503,7 +504,7 @@ server <- function(input, output, session) {
   
   
   ngs_range_weekly <- reactive({
-    data <- readRDS(gzcon(url("https://github.com/Doug-Analytics/Shiny/raw/main/2022_pbp_ngs_df.rds"))) %>%
+    data <- readRDS(gzcon(url("https://github.com/Doug-Analytics/Shiny/raw/main/2023_pbp_ngs_df_new.rds"))) %>%
       filter(week >= input$week_range[1], week <= input$week_range[2]) %>%
       group_by(id, week) %>%
       summarize(player_short_name = last(player_short_name),
@@ -598,7 +599,7 @@ server <- function(input, output, session) {
         arrange(team_abbr) %>%
         distinct(Quarterback)
     } else {
-      data <- readRDS(gzcon(url("https://github.com/Doug-Analytics/Shiny/raw/main/2022_pbp_ngs_df.rds"))) %>%
+      data <- readRDS(gzcon(url("https://github.com/Doug-Analytics/Shiny/raw/main/2023_pbp_ngs_df_new.rds"))) %>%
         filter(week >= input$week_range[1], week <= input$week_range[2]) %>%
         arrange(team_abbr) %>%
         group_by(Quarterback) %>%
@@ -743,8 +744,6 @@ server <- function(input, output, session) {
   
   avg_value <- reactive(mean(y_axis_plot()))
   
-  
-  
   output$plot <- renderPlot({
     
     if (nrow(ngs_range()) == 0 && input$lock_attempts > 0) {
@@ -790,8 +789,8 @@ server <- function(input, output, session) {
           plot.background = element_rect(fill = "grey96", colour = NA),
           panel.grid.major = element_line(colour = "grey90"),
           panel.grid.minor = element_line(colour = "grey95"),
-          axis.line.x.top = element_line(size = 1, colour = "grey98"),
-          axis.line.y.right = element_line(size = 1, colour = "grey98"),
+          axis.line.x.top = element_line(size = 0, colour = "grey98"),
+          axis.line.y.right = element_line(size = 0, colour = "grey98"),
           axis.line.x.bottom = element_line(size = 1, colour = "black"),
           axis.line.y.left = element_line(size = 1, colour = "black")
         ) +
@@ -809,23 +808,20 @@ server <- function(input, output, session) {
           } else {
             "Twitter: @Doug_Analytics | Data: nflfastR"
           },
-          subtitle = paste("Season: ", 
-                           paste0("<span style='color:royalblue4; font-weight:bold'>", "2022", "</span>"), 
-                           "  |  ", 
-                           ifelse(input$week_range[1] == input$week_range[2],
-                                  "Week ",
-                                  "Weeks "),
-                           paste0("<span style='color:royalblue4; font-weight:bold'>", input$week_range[1], "</span>"),
-                           ifelse(input$week_range[1] == input$week_range[2],
-                                  "",
-                                  paste0(" - <span style='color:royalblue4; font-weight:bold'>", input$week_range[2], "</span>")),
-                           "  |  Minimum QB Plays: ",
-                           paste0("<span style='color:royalblue4; font-weight:bold'>", ifelse(is.na(input$min_attempts),0,input$min_attempts), "</span>"),
-                           "\n\n",
-                           "<span style='font-size:8pt;'><b><span style='color:royalblue4;'>Doug-Analytics.shinyapps.io/DOUG</span></b></span>",
-                           sep = ""
+          subtitle = paste("Season: 2023 | ",
+                            ifelse(input$week_range[1] == input$week_range[2],
+                                   " Week ",
+                                   " Weeks "),
+                            input$week_range[1],
+                            ifelse(input$week_range[1] == input$week_range[2],
+                                   "",
+                                   paste0(" - ", input$week_range[2])),
+                            " | Minimum", "&nbsp;&nbsp;&nbsp;&nbsp;", " QB Plays: ",
+                            ifelse(is.na(input$min_attempts), 0, input$min_attempts),
+                            "\n\n",
+                            "<span style='font-size:8pt;'><b><span style='color:royalblue4;'>Doug-Analytics.shinyapps.io/DOUG</span></b></span>",
+                            sep = ""
           )
-          
         ) +
         
         coord_cartesian(clip = "off") +
@@ -881,8 +877,8 @@ server <- function(input, output, session) {
           plot.background = element_rect(fill = "grey96", colour = NA),
           panel.grid.major = element_line(colour = "grey95"),
           panel.grid.minor = element_line(colour = "grey97"),
-          axis.line.x.top = element_line(size = 1, colour = "grey98"),
-          axis.line.y.right = element_line(size = 1, colour = "grey98"),
+          axis.line.x.top = element_line(size = 0, colour = "grey98"),
+          axis.line.y.right = element_line(size = 0, colour = "grey98"),
           axis.line.x.bottom = element_line(size = 1, colour = "black"),
           axis.line.y.left = element_line(size = 1, colour = "black"),
           plot.subtitle = element_markdown(size = 11, hjust = 0, lineheight = 0.8),
@@ -904,22 +900,21 @@ server <- function(input, output, session) {
           } else {
             "Twitter: @Doug_Analytics | Data: nflfastR"
           },
-          subtitle = paste("Season: ", 
-                           paste0("<span style='color:royalblue4; font-weight:bold'>", "2022", "</span>"), 
-                           "  |  ", 
-                           ifelse(input$week_range[1] == input$week_range[2],
-                                  "Week ",
-                                  "Weeks "),
-                           paste0("<span style='color:royalblue4; font-weight:bold'>", input$week_range[1], "</span>"),
-                           ifelse(input$week_range[1] == input$week_range[2],
-                                  "",
-                                  paste0(" - <span style='color:royalblue4; font-weight:bold'>", input$week_range[2], "</span>")),
-                           "  |  Minimum QB Plays: ",
-                           paste0("<span style='color:royalblue4; font-weight:bold'>", ifelse(is.na(input$min_attempts),0,input$min_attempts), "</span>"),
-                           "\n\n",
-                           "<span style='font-size:8pt;'><b><span style='color:royalblue4;'>Doug-Analytics.shinyapps.io/DOUG</span></b></span>",
-                           sep = ""
+          subtitle = paste("Season: 2023 | ",
+                            ifelse(input$week_range[1] == input$week_range[2],
+                                   "Week ",
+                                   "Weeks "),
+                            input$week_range[1],
+                            ifelse(input$week_range[1] == input$week_range[2],
+                                   "",
+                                   paste0(" - ", input$week_range[2])),
+                            " | Minimum QB Plays: ",
+                            ifelse(is.na(input$min_attempts), 0, input$min_attempts),
+                            "\n\n",
+                            "<span style='font-size:8pt;'><b><span style='color:royalblue4;'>Doug-Analytics.shinyapps.io/DOUG</span></b></span>",
+                            sep = ""
           )
+          
         ) +
         
         coord_cartesian(clip = "off")
@@ -966,8 +961,8 @@ server <- function(input, output, session) {
         plot.background = element_rect(fill = "grey96", colour = NA),
         panel.grid.major = element_line(colour = "grey90"),
         panel.grid.minor = element_line(colour = "grey95"),
-        axis.line.x.top = element_line(size = 1, colour = "grey98"),
-        axis.line.y.right = element_line(size = 1, colour = "grey98"),
+        axis.line.x.top = element_line(size = 0, colour = "grey98"),
+        axis.line.y.right = element_line(size = 0, colour = "grey98"),
         axis.line.x.bottom = element_line(size = 1, colour = "black"),
         axis.line.y.left = element_line(size = 1, colour = "black"),) +
       xlab("Week") +
@@ -979,36 +974,27 @@ server <- function(input, output, session) {
         } else {
           "Twitter: @Doug_Analytics | Data: nflfastR"
         },
-        subtitle = paste("Season: ", 
-                         paste0("<span style='color:royalblue4; font-weight:bold'>", "2022", "</span>"), 
-                         "  |  ", 
-                         ifelse(input$week_range[1] == input$week_range[2],
-                                "Week ",
-                                "Weeks "),
-                         paste0("<span style='color:royalblue4; font-weight:bold'>", input$week_range[1], "</span>"),
-                         ifelse(input$week_range[1] == input$week_range[2],
-                                "",
-                                paste0(" - <span style='color:royalblue4; font-weight:bold'>", input$week_range[2], "</span>")),
-                         if(length(input$qb_highlight) == 0){
-                           paste0(" <span style='color:black; font-weight:bold'>| All ", "QBs", "</span>")
-                         } else if(length(input$qb_highlight) == 1) {
-                           "" # no additional text for one quarterback
-                         } else if(length(input$qb_highlight) >= 2 & length(input$qb_highlight) <= 4) {
-                           paste0(" <span style='color:black; font-weight:bold'>| ", "Quarterbacks: ", "</span>", 
-                                  paste0("<span style='color:", qb_colors, "; font-weight:bold'>", 
-                                         paste(qb_names, collapse = ", "), 
-                                         "</span>")
-                           )
-                         } else {
-                           paste0(" <span style='color:black; font-weight:bold'>| ", "Quarterbacks: Multiple", "</span>")
-                         },
-                         "\n", # one \n for the third line to make it blank
-                         "\n", # one \n for the fourth line to make it blank
-                         "\n", # one \n for the fifth line to make it blank
+        subtitle = paste("Season: 2023 | ",
+                          ifelse(input$week_range[1] == input$week_range[2],
+                                 "Week ",
+                                 "Weeks "),
+                          input$week_range[1],
+                          ifelse(input$week_range[1] == input$week_range[2],
+                                 "",
+                                 paste0(" - ", input$week_range[2])),
+                          if (length(input$qb_highlight) == 0) {
+                            "| All QBs"
+                          } else if (length(input$qb_highlight) >= 2 & length(input$qb_highlight) <= 4) {
+                            paste("| Quarterbacks: ", paste(qb_names, collapse = ", "))
+                          } else {
+                            "| Quarterbacks: Multiple"
+                          },
+                          "\n",
+                          "\n",
+                          "\n",
                          "<span style='font-size:8pt;'><b><span style='color:royalblue4;'>Doug-Analytics.shinyapps.io/DOUG</span></b></span>",
-                         sep = ""
+                          sep = ""
         )
-        
       ) +
       guides(color = guide_legend(title = "Quarterback")) +
         
@@ -1052,6 +1038,3 @@ server <- function(input, output, session) {
 
 
 shinyApp(ui = ui, server = server)
-
-
-
