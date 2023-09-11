@@ -1,5 +1,5 @@
 library(tidyverse)
-library(nflverse)
+library(nflreadr)
 
 
   dic <- dictionary_pbp
@@ -11,7 +11,7 @@ library(nflverse)
   
   ngs <- load_nextgen_stats(stat_type = c("passing")) %>%
     mutate(week = ifelse(week == 23, 22, week)) %>%
-    filter(season == "2022") %>%
+    filter(season == "2023") %>%
     #   filter(week >= input$week_range[1], week <= input$week_range[2]) %>%
     filter(week >= 1) %>%
     arrange(player_last_name) %>%
@@ -48,7 +48,7 @@ library(nflverse)
     group_by(gsis_id) %>%
     summarize(height, weight, draft_number, uniform_number)
   
-  player_stats <- load_player_stats() %>%
+  player_stats <- load_player_stats(seasons = 2023) %>%
     filter(position == "QB") %>%
     mutate(Quarterback = paste(player_display_name, " (", recent_team, ")", sep = "")) %>%
     group_by(player_id, week) %>%
@@ -63,7 +63,7 @@ library(nflverse)
     left_join(players, by = c('player_id' = 'gsis_id'))
   
   
-  data <- load_pbp(2022) %>%
+  data <- load_pbp(2023) %>%
     filter(pass + rush == 1) %>%
     filter(!is.na(down)) %>%
     #filter(week >= 1, week <= 18) %>%
@@ -122,19 +122,4 @@ library(nflverse)
     filter(!is.na(attempts)) %>%
     left_join(ngs, by = c("id" = "player_gsis_id", "week")) 
   
-  data_nyg <- load_pbp(2022) %>%
-    filter(posteam == "NYG") %>%
-    filter(play_type == "pass" | play_type == "run") %>%
-    group_by(week, defteam, qtr, time, down, ydstogo) %>%
-    summarize(play_type, desc, vegas_wpa) %>%
-    arrange(-vegas_wpa) 
-
-  
-  
-  sch <- load_schedules(seasons = 2023)
-  
-  
-  saveRDS(data, "2022_pbp_ngs_df.rds")
-  
-
-  ngs <- load_nextgen_stats(season = 2022, stat_type = "receiving")
+  saveRDS(data, "2023_pbp_ngs_df_new.rds")
