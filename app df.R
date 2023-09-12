@@ -37,13 +37,14 @@ library(nflreadr)
   
   players <- load_players() %>%
     filter(!is.na(height)) %>%
-    separate(height, into = c("ft", "inch"), sep = "-") %>%
-    filter(!is.na(inch)) %>%
-    mutate(ft = as.numeric(ft), 
-           inch = as.numeric(inch),
-           height = ft * 12 + inch,
+   # separate(height, into = c("ft", "inch"), sep = "-") %>%   #height column updated to inches#
+   # filter(!is.na(inch)) %>%
+    mutate(
+    #       ft = as.numeric(ft), 
+    #       inch = as.numeric(inch),
+    #       height = ft * 12 + inch,
            draft_number = as.numeric(draft_number),
-           uniform_number = as.numeric(uniform_number),
+           uniform_number = as.numeric(jersey_number),
            weight = as.numeric(weight)) %>%
     group_by(gsis_id) %>%
     summarize(height, weight, draft_number, uniform_number)
