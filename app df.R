@@ -6,13 +6,12 @@ library(nflreadr)
   
   teams <- load_teams() %>%
     mutate(team_color = ifelse(team_color == "#D3BC8D", "#857952", team_color)) %>%
-    summarize(team_abbr, team_color)
+    select(team_abbr, team_color)
   
   
   ngs <- load_nextgen_stats(stat_type = c("passing")) %>%
     mutate(week = ifelse(week == 23, 22, week)) %>%
     filter(season == "2023") %>%
-    #   filter(week >= input$week_range[1], week <= input$week_range[2]) %>%
     filter(week >= 1) %>%
     arrange(player_last_name) %>%
     mutate(att_avg_time_to_throw = attempts*avg_time_to_throw) %>%
@@ -34,20 +33,49 @@ library(nflreadr)
               att_exp_completion_percentage,
               att_completion_percentage_above_expectation) 
   
+  combine <- load_combine() %>%
+    filter(pos == "QB") %>%
+    select(player_name, forty, vertical, broad_jump, cone, shuttle)
+  
+  contracts <- load_contracts() %>%
+    filter(position == "QB") %>%
+    mutate(guarantee_pct = guaranteed / value) %>%
+    group_by(player) %>%
+    filter(year_signed == max(year_signed) | (year_signed == max(year_signed) & apy == max(apy))) %>%
+    slice_max(order_by = apy) %>%
+    ungroup() %>%
+    select(player, apy, guaranteed, guarantee_pct, year_signed) %>%
+    distinct()
   
   players <- load_players() %>%
-    filter(!is.na(height)) %>%
-   # separate(height, into = c("ft", "inch"), sep = "-") %>%   #height column updated to inches#
-   # filter(!is.na(inch)) %>%
+    filter(!is.na(height), !is.na(birth_date)) %>%
     mutate(
     #       ft = as.numeric(ft), 
     #       inch = as.numeric(inch),
     #       height = ft * 12 + inch,
            draft_number = as.numeric(draft_number),
            uniform_number = as.numeric(jersey_number),
-           weight = as.numeric(weight)) %>%
+           weight = as.numeric(weight),
+           bmi = (weight / (height^2)) * 703,
+           birth_month = as.integer(format(as.Date(birth_date), "%m")),
+           birth_day = as.integer(format(as.Date(birth_date), "%d")),
+           star_sign = case_when(
+             (birth_month == 3 & birth_day >= 21) | (birth_month == 4 & birth_day <= 19) ~ "Aries",
+             (birth_month == 4 & birth_day >= 20) | (birth_month == 5 & birth_day <= 20) ~ "Taurus",
+             (birth_month == 5 & birth_day >= 21) | (birth_month == 6 & birth_day <= 20) ~ "Gemini",
+             (birth_month == 6 & birth_day >= 21) | (birth_month == 7 & birth_day <= 22) ~ "Cancer",
+             (birth_month == 7 & birth_day >= 23) | (birth_month == 8 & birth_day <= 22) ~ "Leo",
+             (birth_month == 8 & birth_day >= 23) | (birth_month == 9 & birth_day <= 22) ~ "Virgo",
+             (birth_month == 9 & birth_day >= 23) | (birth_month == 10 & birth_day <= 22) ~ "Libra",
+             (birth_month == 10 & birth_day >= 23) | (birth_month == 11 & birth_day <= 21) ~ "Scorpio",
+             (birth_month == 11 & birth_day >= 22) | (birth_month == 12 & birth_day <= 21) ~ "Sagittarius",
+             (birth_month == 12 & birth_day >= 22) | (birth_month == 1 & birth_day <= 19) ~ "Capricorn",
+             (birth_month == 1 & birth_day >= 20) | (birth_month == 2 & birth_day <= 18) ~ "Aquarius",
+             (birth_month == 2 & birth_day >= 19) | (birth_month == 3 & birth_day <= 20) ~ "Pisces",
+             TRUE ~ "Unknown"  # Default case for unknown star signs
+           )) %>%
     group_by(gsis_id) %>%
-    summarize(height, weight, draft_number, uniform_number)
+    summarize(height, weight, draft_number, uniform_number, star_sign, bmi, years_of_experience)
   
   player_stats <- load_player_stats(seasons = 2023) %>%
     filter(position == "QB") %>%
@@ -121,7 +149,9 @@ library(nflreadr)
               att_seconds_per_play = sum(drive_possession_seconds, na.rm = TRUE) / sum(drive_play_count, na.rm = TRUE) * data_attempts,
               team_color = last(team_color)) %>%
     filter(!is.na(attempts)) %>%
-    left_join(ngs, by = c("id" = "player_gsis_id", "week")) 
+    left_join(ngs, by = c("id" = "player_gsis_id", "week")) %>%
+    left_join(combine, by = c("player_display_name" = "player_name")) %>%
+    left_join(contracts, by = c("player_display_name" = "player"))
   
   saveRDS(data, "2023_pbp_ngs_df_new.rds")
   
