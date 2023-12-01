@@ -1,6 +1,7 @@
 library(tidyverse)
 library(nflreadr)
 
+clear_cache()
 
   dic <- dictionary_pbp
   
