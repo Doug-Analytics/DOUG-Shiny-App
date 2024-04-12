@@ -105,11 +105,11 @@ library(nflreadr)
            drive_possession_seconds = drive_minutes * 60 + drive_seconds) %>%
     mutate(home = ifelse(home_team == posteam, 1, 0),
            redzone = ifelse(yardline_100 <= 20, 1, 0),
-           early_down = ifelse(down <= 2, 1, 0),
-           half = ifelse(game_half == "Half1", 1, 2)) %>%
+       #    early_down = ifelse(down <= 2, 1, 0),
+       #    half = ifelse(game_half == "Half1", 1, 2)) %>%
     left_join(player_stats, by = c("id" = "player_id", "week")) %>%
     left_join(teams, by = c('team_abbr' = 'team_abbr')) %>%
-    group_by(id, week, half, early_down, home, redzone) %>%
+    group_by(id, week, down, qtr, home, redzone) %>%
     summarize(player_short_name = last(player_short_name),
               player_display_name = last(player_display_name),
               height = last(height),
