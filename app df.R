@@ -1,7 +1,6 @@
 library(tidyverse)
 library(nflreadr)
 
-clear_cache()
 
   dic <- dictionary_pbp
   
@@ -57,26 +56,30 @@ clear_cache()
            draft_number = as.numeric(draft_number),
            uniform_number = as.numeric(jersey_number),
            weight = as.numeric(weight),
-           bmi = (weight / (height^2)) * 703,
-           birth_month = as.integer(format(as.Date(birth_date), "%m")),
-           birth_day = as.integer(format(as.Date(birth_date), "%d")),
-           star_sign = case_when(
-             (birth_month == 3 & birth_day >= 21) | (birth_month == 4 & birth_day <= 19) ~ "Aries",
-             (birth_month == 4 & birth_day >= 20) | (birth_month == 5 & birth_day <= 20) ~ "Taurus",
-             (birth_month == 5 & birth_day >= 21) | (birth_month == 6 & birth_day <= 20) ~ "Gemini",
-             (birth_month == 6 & birth_day >= 21) | (birth_month == 7 & birth_day <= 22) ~ "Cancer",
-             (birth_month == 7 & birth_day >= 23) | (birth_month == 8 & birth_day <= 22) ~ "Leo",
-             (birth_month == 8 & birth_day >= 23) | (birth_month == 9 & birth_day <= 22) ~ "Virgo",
-             (birth_month == 9 & birth_day >= 23) | (birth_month == 10 & birth_day <= 22) ~ "Libra",
-             (birth_month == 10 & birth_day >= 23) | (birth_month == 11 & birth_day <= 21) ~ "Scorpio",
-             (birth_month == 11 & birth_day >= 22) | (birth_month == 12 & birth_day <= 21) ~ "Sagittarius",
-             (birth_month == 12 & birth_day >= 22) | (birth_month == 1 & birth_day <= 19) ~ "Capricorn",
-             (birth_month == 1 & birth_day >= 20) | (birth_month == 2 & birth_day <= 18) ~ "Aquarius",
-             (birth_month == 2 & birth_day >= 19) | (birth_month == 3 & birth_day <= 20) ~ "Pisces",
-             TRUE ~ "Unknown"  # Default case for unknown star signs
-           )) %>%
+           bmi = (weight / (height^2)) * 703) %>%
+  #         birth_month = as.integer(format(as.Date(birth_date), "%m")),
+  #         birth_day = as.integer(format(as.Date(birth_date), "%d")),
+  #         star_sign = case_when(
+  #           (birth_month == 3 & birth_day >= 21) | (birth_month == 4 & birth_day <= 19) ~ "Aries",
+  #           (birth_month == 4 & birth_day >= 20) | (birth_month == 5 & birth_day <= 20) ~ "Taurus",
+  #           (birth_month == 5 & birth_day >= 21) | (birth_month == 6 & birth_day <= 20) ~ "Gemini",
+  #           (birth_month == 6 & birth_day >= 21) | (birth_month == 7 & birth_day <= 22) ~ "Cancer",
+  #           (birth_month == 7 & birth_day >= 23) | (birth_month == 8 & birth_day <= 22) ~ "Leo",
+  #           (birth_month == 8 & birth_day >= 23) | (birth_month == 9 & birth_day <= 22) ~ "Virgo",
+  #           (birth_month == 9 & birth_day >= 23) | (birth_month == 10 & birth_day <= 22) ~ "Libra",
+  #           (birth_month == 10 & birth_day >= 23) | (birth_month == 11 & birth_day <= 21) ~ "Scorpio",
+  #           (birth_month == 11 & birth_day >= 22) | (birth_month == 12 & birth_day <= 21) ~ "Sagittarius",
+  #           (birth_month == 12 & birth_day >= 22) | (birth_month == 1 & birth_day <= 19) ~ "Capricorn",
+  #           (birth_month == 1 & birth_day >= 20) | (birth_month == 2 & birth_day <= 18) ~ "Aquarius",
+  #           (birth_month == 2 & birth_day >= 19) | (birth_month == 3 & birth_day <= 20) ~ "Pisces",
+  #           TRUE ~ "Unknown"  # Default case for unknown star signs
+  #         )) %>%
     group_by(gsis_id) %>%
-    summarize(height, weight, draft_number, uniform_number, star_sign, bmi, years_of_experience)
+    summarize(height, weight, draft_number, uniform_number, bmi, years_of_experience)
+  
+  clear_cache()
+  
+#  stats <- calculate_player_stats(pbp = load_pbp(), weekly = TRUE) 
   
   player_stats <- load_player_stats(seasons = 2023) %>%
     filter(position == "QB") %>%
@@ -92,6 +95,7 @@ clear_cache()
               Quarterback) %>%
     left_join(players, by = c('player_id' = 'gsis_id'))
   
+  dic <- dictionary_pbp
   
   data <- load_pbp(2023) %>%
     filter(pass + rush == 1) %>%
@@ -101,9 +105,11 @@ clear_cache()
     separate(drive_time_of_possession, into = c("drive_minutes", "drive_seconds"), sep = ":") %>%
     mutate(drive_minutes = as.numeric(drive_minutes), drive_seconds = as.numeric(drive_seconds), 
            drive_possession_seconds = drive_minutes * 60 + drive_seconds) %>%
+    mutate(home = ifelse(home_team == posteam, 1, 0),
+           redzone = ifelse(yardline_100 <= 20, 1, 0)) %>%
     left_join(player_stats, by = c("id" = "player_id", "week")) %>%
     left_join(teams, by = c('team_abbr' = 'team_abbr')) %>%
-    group_by(id, week) %>%
+    group_by(id, week, qtr, down, no_huddle, home, redzone) %>%
     summarize(player_short_name = last(player_short_name),
               player_display_name = last(player_display_name),
               height = last(height),
@@ -111,7 +117,6 @@ clear_cache()
               jersey_number = last(uniform_number),
               bmi = last(bmi),
               weight = last(weight),
-              star_sign = last(star_sign),
               years_of_experience = max(as.numeric(years_of_experience)),
               team_abbr = last(team_abbr),
               Quarterback = last(Quarterback),
@@ -159,4 +164,5 @@ clear_cache()
     left_join(contracts, by = c("player_display_name" = "player"))
   
   saveRDS(data, "2023_pbp_ngs_df_new.rds")
+  
   
