@@ -104,7 +104,7 @@ library(nflreadr)
     mutate(drive_minutes = as.numeric(drive_minutes), drive_seconds = as.numeric(drive_seconds), 
            drive_possession_seconds = drive_minutes * 60 + drive_seconds) %>%
     mutate(home = ifelse(home_team == posteam, 1, 0),
-           redzone = ifelse(yardline_100 <= 20, 1, 0),
+           redzone = ifelse(yardline_100 <= 20, 1, 0)) %>%
        #    early_down = ifelse(down <= 2, 1, 0),
        #    half = ifelse(game_half == "Half1", 1, 2)) %>%
     left_join(player_stats, by = c("id" = "player_id", "week")) %>%
@@ -163,5 +163,7 @@ library(nflreadr)
     left_join(combine, by = c("player_display_name" = "player_name")) %>%
     left_join(contracts, by = c("player_display_name" = "player"))
   
+    
   saveRDS(data, "2023_pbp_ngs_df_new.rds")
+  
   
