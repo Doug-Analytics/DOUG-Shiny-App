@@ -79,8 +79,6 @@ library(nflreadr)
   
   clear_cache()
   
-#  stats <- calculate_player_stats(pbp = load_pbp(), weekly = TRUE) 
-  
   player_stats <- load_player_stats(seasons = 2023) %>%
     filter(position == "QB") %>%
     mutate(Quarterback = paste(player_display_name, " (", recent_team, ")", sep = "")) %>%
@@ -107,11 +105,13 @@ library(nflreadr)
            drive_possession_seconds = drive_minutes * 60 + drive_seconds) %>%
     mutate(home = ifelse(home_team == posteam, 1, 0),
            redzone = ifelse(yardline_100 <= 20, 1, 0),
-           garbage = ifelse(wp <= 0.1, 1, 0)) %>%
+           garbage = ifelse(wp <= 0.1 | wp >= 0.9, 1, 0)) %>%
        #    early_down = ifelse(down <= 2, 1, 0),
        #    half = ifelse(game_half == "Half1", 1, 2)) %>%
     left_join(player_stats, by = c("id" = "player_id", "week")) %>%
     left_join(teams, by = c('team_abbr' = 'team_abbr')) %>%
+    group_by(id, week) %>%
+    mutate(data_attempts = n()) %>%
     group_by(id, week, down, qtr, home, redzone, garbage) %>%
     summarize(player_short_name = last(player_short_name),
               player_display_name = last(player_display_name),
@@ -123,7 +123,7 @@ library(nflreadr)
               years_of_experience = max(as.numeric(years_of_experience)),
               team_abbr = last(team_abbr),
               Quarterback = last(Quarterback),
-              data_attempts = n(),
+           #   data_attempts = n(),
               attempts = last(attempts),
               rush_attempts = sum(rush + qb_scramble, na.rm = TRUE),
               cp_attempts = sum(ifelse(is.na(cp),0,1)),
