@@ -75,7 +75,7 @@ library(nflreadr)
   #           TRUE ~ "Unknown"  # Default case for unknown star signs
   #         )) %>%
     group_by(gsis_id) %>%
-    summarize(height, weight, draft_number, uniform_number, bmi, years_of_experience)
+    summarize(short_name, display_name, height, weight, draft_number, uniform_number, bmi, years_of_experience)
   
   clear_cache()
   
@@ -93,10 +93,24 @@ library(nflreadr)
               Quarterback) %>%
     left_join(players, by = c('player_id' = 'gsis_id'))
   
-#  dic <- dictionary_pbp
+  dic <- dictionary_pbp
+  
+  
+  
+    data <- load_pbp(2023) %>%
+       filter(!is.na(down)) %>%
+       filter(week <= 18) %>%
+       group_by(passer_player_id) %>%
+       summarize(att = sum(complete_pass == 1 | incomplete_pass == 1 | interception == 1, na.rm = T),
+                 fumbles = sum(fumble == 1 & fumbled_1_player_id == passer_player_id),
+                 fumbles_lost = sum(fumble_lost == 1 & fumbled_1_player_id == passer_player_id & fumble_recovery_1_team != posteam),
+                 )
+            
+            
+  
   
   data <- load_pbp(2023) %>%
-    filter(pass + rush == 1) %>%
+  #  filter(pass + rush == 1) %>%
     filter(!is.na(down)) %>%
     #filter(week >= 1, week <= 18) %>%
     #mutate(adj_qb_epa = ifelse(qb_epa <= -4.5, -4.5, qb_epa)) %>%
@@ -111,7 +125,7 @@ library(nflreadr)
     left_join(player_stats, by = c("id" = "player_id", "week")) %>%
     left_join(teams, by = c('team_abbr' = 'team_abbr')) %>%
     group_by(id, week) %>%
-    mutate(data_attempts = n()) %>%
+   # mutate(data_attempts = n()) %>%
     group_by(id, week, down, qtr, home, redzone, garbage) %>%
     summarize(player_short_name = last(player_short_name),
               player_display_name = last(player_display_name),
@@ -123,7 +137,7 @@ library(nflreadr)
               years_of_experience = max(as.numeric(years_of_experience)),
               team_abbr = last(team_abbr),
               Quarterback = last(Quarterback),
-           #   data_attempts = n(),
+              data_attempts = n(),
               attempts = last(attempts),
               rush_attempts = sum(rush + qb_scramble, na.rm = TRUE),
               cp_attempts = sum(ifelse(is.na(cp),0,1)),
