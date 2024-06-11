@@ -200,9 +200,9 @@ library(nflreadr)
     filter(!is.na(attempts)) %>%
     left_join(ngs, by = c("id" = "player_gsis_id", "week")) %>%
     left_join(combine, by = c("player_display_name" = "player_name")) %>%
-    left_join(contracts, by = c("player_display_name" = "player"))
+    left_join(contracts, by = c("player_display_name" = "player")) %>%
+    filter(!is.na(id))
   
     
   saveRDS(data, "2023_pbp_ngs_df_new.rds")
-  
   
