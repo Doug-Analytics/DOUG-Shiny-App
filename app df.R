@@ -77,7 +77,7 @@ library(nflreadr)
     group_by(gsis_id) %>%
     summarize(short_name, display_name, height, weight, draft_number, uniform_number, bmi, years_of_experience)
   
-  clear_cache()
+#  clear_cache()
   
   player_stats <- load_player_stats(seasons = 2023) %>%
     filter(position == "QB") %>%
@@ -96,16 +96,38 @@ library(nflreadr)
   dic <- dictionary_pbp
   
   
-  
-    data <- load_pbp(2023) %>%
+    pass_data <- load_pbp(2023) %>%
        filter(!is.na(down)) %>%
        filter(week <= 18) %>%
-       group_by(passer_player_id) %>%
-       summarize(att = sum(complete_pass == 1 | incomplete_pass == 1 | interception == 1, na.rm = T),
-                 fumbles = sum(fumble == 1 & fumbled_1_player_id == passer_player_id),
-                 fumbles_lost = sum(fumble_lost == 1 & fumbled_1_player_id == passer_player_id & fumble_recovery_1_team != posteam),
-                 )
+      left_join(players, by = c('passer_player_id' = 'gsis_id')) %>%
+      mutate(Quarterback = paste(display_name, " (", posteam, ")", sep = "")) %>%
+      mutate(home = ifelse(home_team == posteam, 1, 0),
+             redzone = ifelse(yardline_100 <= 20, 1, 0),
+             garbage = ifelse(wp <= 0.1 | wp >= 0.9, 1, 0)) %>%
+       group_by(passer_player_id, week, down, qtr, home, redzone, garbage) %>%
+       summarize(Quarterback = last(Quarterback),
+                 player_short_name = last(short_name),
+                 player_display_name = last(display_name),
+                 team_abbr = last(posteam),
+                 attempts = sum(complete_pass == 1 | incomplete_pass == 1 | interception == 1, na.rm = T),
+                 sack_fumbles = sum(fumble == 1 & fumbled_1_player_id == passer_player_id),
+                 sack_fumbles_lost = sum(fumble_lost == 1 & fumbled_1_player_id == passer_player_id & fumble_recovery_1_team != posteam),
+                 ) %>%
+      left_join(players, by = c('passer_player_id' = 'gsis_id'))
             
+    
+    
+    
+    rush_data <- load_pbp(2023) %>%
+      filter(!is.na(down)) %>%
+      filter(week <= 18) %>%
+      mutate(home = ifelse(home_team == posteam, 1, 0),
+             redzone = ifelse(yardline_100 <= 20, 1, 0),
+             garbage = ifelse(wp <= 0.1 | wp >= 0.9, 1, 0)) %>%
+      group_by(rusher_player_id, week, down, qtr, home, redzone, garbage) %>%
+      summarize(rush_fumbles = sum(fumble == 1 & fumbled_1_player_id == rusher_player_id),
+                rush_fumbles_lost = sum(fumble_lost == 1 & fumbled_1_player_id == rusher_player_id & fumble_recovery_1_team != posteam),
+      ) 
             
   
   
@@ -122,10 +144,10 @@ library(nflreadr)
            garbage = ifelse(wp <= 0.1 | wp >= 0.9, 1, 0)) %>%
        #    early_down = ifelse(down <= 2, 1, 0),
        #    half = ifelse(game_half == "Half1", 1, 2)) %>%
-    left_join(player_stats, by = c("id" = "player_id", "week")) %>%
+  #  left_join(player_stats, by = c("id" = "player_id", "week")) %>%
+    left_join(pass_data, by = c("id" = "passer_player_id", "week", "down", "qtr", "home", "redzone", "garbage")) %>%
+    left_join(rush_data, by = c("id" = "rusher_player_id", "week", "down", "qtr", "home", "redzone", "garbage")) %>%
     left_join(teams, by = c('team_abbr' = 'team_abbr')) %>%
-    group_by(id, week) %>%
-   # mutate(data_attempts = n()) %>%
     group_by(id, week, down, qtr, home, redzone, garbage) %>%
     summarize(player_short_name = last(player_short_name),
               player_display_name = last(player_display_name),
@@ -164,8 +186,8 @@ library(nflreadr)
               tot_pass_epa = sum(epa[play_type == "pass"], na.rm = TRUE),
               tot_rush = sum(ifelse(play_type == "run", 1, 0)),
               tot_rush_epa = sum(epa[play_type == "run"], na.rm = TRUE),
-              tot_fumble = last(fumbles),
-              tot_fumble_lost = last(fumbles_lost),
+              tot_fumble = sum(sack_fumbles + rush_fumbles, na.rm = T),
+              tot_fumble_lost = sum(sack_fumbles_lost + rush_fumbles_lost, na.rm = T),
               tot_turnover = sum(tot_fumble_lost, interception),
               tot_touchdown = sum(touchdown, na.rm = TRUE),
               nflfastr_attempts = sum(complete_pass, incomplete_pass, interception, na.rm = TRUE),
@@ -182,5 +204,4 @@ library(nflreadr)
   
     
   saveRDS(data, "2023_pbp_ngs_df_new.rds")
-  
   
