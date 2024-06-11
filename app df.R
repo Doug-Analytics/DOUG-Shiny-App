@@ -48,7 +48,7 @@ library(nflreadr)
     distinct()
   
   players <- load_players() %>%
-    filter(!is.na(height), !is.na(birth_date)) %>%
+  #  filter(!is.na(height), !is.na(birth_date)) %>%
     mutate(
     #       ft = as.numeric(ft), 
     #       inch = as.numeric(inch),
@@ -204,4 +204,5 @@ library(nflreadr)
   
     
   saveRDS(data, "2023_pbp_ngs_df_new.rds")
+  
   
