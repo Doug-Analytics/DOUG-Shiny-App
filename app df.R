@@ -48,11 +48,7 @@ library(nflreadr)
     distinct()
   
   players <- load_players() %>%
-  #  filter(!is.na(height), !is.na(birth_date)) %>%
     mutate(
-    #       ft = as.numeric(ft), 
-    #       inch = as.numeric(inch),
-    #       height = ft * 12 + inch,
            draft_number = as.numeric(draft_number),
            uniform_number = as.numeric(jersey_number),
            weight = as.numeric(weight),
@@ -77,21 +73,19 @@ library(nflreadr)
     group_by(gsis_id) %>%
     summarize(short_name, display_name, height, weight, draft_number, uniform_number, bmi, years_of_experience)
   
-#  clear_cache()
-  
-  player_stats <- load_player_stats(seasons = 2023) %>%
-    filter(position == "QB") %>%
-    mutate(Quarterback = paste(player_display_name, " (", recent_team, ")", sep = "")) %>%
-    group_by(player_id, week) %>%
-    summarize(attempts,
-              fumbles = sum(sack_fumbles + rushing_fumbles, na.rm = TRUE),
-              fumbles_lost = sum(sack_fumbles_lost + rushing_fumbles_lost, na.rm = TRUE),
-              position,
-              player_short_name = player_name,
-              player_display_name,
-              team_abbr = recent_team,
-              Quarterback) %>%
-    left_join(players, by = c('player_id' = 'gsis_id'))
+#  player_stats <- load_player_stats(seasons = 2023) %>%
+#    filter(position == "QB") %>%
+#    mutate(Quarterback = paste(player_display_name, " (", recent_team, ")", sep = "")) %>%
+#    group_by(player_id, week) %>%
+#    summarize(attempts,
+#              fumbles = sum(sack_fumbles + rushing_fumbles, na.rm = TRUE),
+#              fumbles_lost = sum(sack_fumbles_lost + rushing_fumbles_lost, na.rm = TRUE),
+#              position,
+#              player_short_name = player_name,
+#              player_display_name,
+#              team_abbr = recent_team,
+#              Quarterback) %>%
+#    left_join(players, by = c('player_id' = 'gsis_id'))
   
   dic <- dictionary_pbp
   
@@ -113,7 +107,7 @@ library(nflreadr)
                  sack_fumbles = sum(fumble == 1 & fumbled_1_player_id == passer_player_id),
                  sack_fumbles_lost = sum(fumble_lost == 1 & fumbled_1_player_id == passer_player_id & fumble_recovery_1_team != posteam),
                  ) %>%
-      left_join(players, by = c('passer_player_id' = 'gsis_id'))
+      left_join(players, by = c('passer_player_id' = 'gsis_id')) 
             
     
     
@@ -132,20 +126,17 @@ library(nflreadr)
   
   
   data <- load_pbp(2023) %>%
-  #  filter(pass + rush == 1) %>%
     filter(!is.na(down)) %>%
-    #filter(week >= 1, week <= 18) %>%
-    #mutate(adj_qb_epa = ifelse(qb_epa <= -4.5, -4.5, qb_epa)) %>%
+    filter(week <= 18) %>%
+    mutate(id = ifelse(is.na(id) & qb_spike == 1, passer_player_id, id)) %>%
     separate(drive_time_of_possession, into = c("drive_minutes", "drive_seconds"), sep = ":") %>%
     mutate(drive_minutes = as.numeric(drive_minutes), drive_seconds = as.numeric(drive_seconds), 
            drive_possession_seconds = drive_minutes * 60 + drive_seconds) %>%
     mutate(home = ifelse(home_team == posteam, 1, 0),
            redzone = ifelse(yardline_100 <= 20, 1, 0),
            garbage = ifelse(wp <= 0.1 | wp >= 0.9, 1, 0)) %>%
-       #    early_down = ifelse(down <= 2, 1, 0),
-       #    half = ifelse(game_half == "Half1", 1, 2)) %>%
-  #  left_join(player_stats, by = c("id" = "player_id", "week")) %>%
     left_join(pass_data, by = c("id" = "passer_player_id", "week", "down", "qtr", "home", "redzone", "garbage")) %>%
+        # filter(desc == "(:28) (No Huddle) 16-J.Goff spiked the ball to stop the clock.")
     left_join(rush_data, by = c("id" = "rusher_player_id", "week", "down", "qtr", "home", "redzone", "garbage")) %>%
     left_join(teams, by = c('team_abbr' = 'team_abbr')) %>%
     group_by(id, week, down, qtr, home, redzone, garbage) %>%
@@ -203,6 +194,32 @@ library(nflreadr)
     left_join(contracts, by = c("player_display_name" = "player")) %>%
     filter(!is.na(id))
   
+  #data does not contain week 17, qtr 4, down 1, redzone row but pass_data does...
+    # load_pbp is grouping by id but when the group is just spikes, there is no id, so the pass_data has nothing to joing to
+  
+ # data_test <- data %>%
+  #  group_by(id, Quarterback) %>%
+   # filter(team_abbr == "DET", week == 17, qtr == 4, down == 1) %>%
+   # reframe(attemptss = sum(attempts),
+    #        comp = sum(completions),
+     #       yards = sum(passing_yards),
+      #      td = sum(pass_touchdown))
     
+  
+#  pass_data_test <- pass_data %>%
+  #  filter(team_abbr == "DET", week == 17, qtr == 4, down == 1) %>%
+#    group_by(passer_player_id, Quarterback) %>%
+    # filter(team_abbr == "DET", week == 17, qtr == 4, down == 1) %>%
+ #   reframe(attemptss = sum(attempts))
+  
+#  test <- load_pbp() %>%
+ #   filter(is.na(id)) %>%
+  #  mutate(home = ifelse(home_team == posteam, 1, 0),
+#           redzone = ifelse(yardline_100 <= 20, 1, 0),
+#           garbage = ifelse(wp <= 0.1 | wp >= 0.9, 1, 0)) %>%
+#    filter(posteam == "DET", week == 17, qtr == 4, down == 1) %>%
+#    select(passer_player_id, id, passer_player_name, garbage, redzone, desc, complete_pass, incomplete_pass, interception)
+  
   saveRDS(data, "2023_pbp_ngs_df_new.rds")
+  
   
