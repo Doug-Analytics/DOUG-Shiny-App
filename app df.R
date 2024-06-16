@@ -90,7 +90,7 @@ library(nflreadr)
   dic <- dictionary_pbp
   
   
-    pass_data <- load_pbp(2023) %>%
+    pass_data <- load_pbp() %>%
        filter(!is.na(down)) %>%
        filter(week <= 18) %>%
       left_join(players, by = c('passer_player_id' = 'gsis_id')) %>%
@@ -106,13 +106,13 @@ library(nflreadr)
                  attempts = sum(complete_pass == 1 | incomplete_pass == 1 | interception == 1, na.rm = T),
                  sack_fumbles = sum(fumble == 1 & fumbled_1_player_id == passer_player_id),
                  sack_fumbles_lost = sum(fumble_lost == 1 & fumbled_1_player_id == passer_player_id & fumble_recovery_1_team != posteam),
-                 ) %>%
+                 pass_plays = n()) %>%
       left_join(players, by = c('passer_player_id' = 'gsis_id')) 
             
     
     
     
-    rush_data <- load_pbp(2023) %>%
+    rush_data <- load_pbp() %>%
       filter(!is.na(down)) %>%
       filter(week <= 18) %>%
       mutate(home = ifelse(home_team == posteam, 1, 0),
@@ -121,14 +121,14 @@ library(nflreadr)
       group_by(rusher_player_id, week, down, qtr, home, redzone, garbage) %>%
       summarize(rush_fumbles = sum(fumble == 1 & fumbled_1_player_id == rusher_player_id),
                 rush_fumbles_lost = sum(fumble_lost == 1 & fumbled_1_player_id == rusher_player_id & fumble_recovery_1_team != posteam),
-      ) 
-            
-  
-  
-  data <- load_pbp(2023) %>%
-    filter(!is.na(down)) %>%
+                rush_plays = n()) 
+          
+    
+    
+  data <- load_pbp() %>%
+    filter(!is.na(down), !is.na(epa), pass+rush == 1) %>%
     filter(week <= 18) %>%
-    mutate(id = ifelse(is.na(id) & qb_spike == 1, passer_player_id, id)) %>%
+    mutate(id = ifelse(is.na(id), passer_player_id, id)) %>%
     separate(drive_time_of_possession, into = c("drive_minutes", "drive_seconds"), sep = ":") %>%
     mutate(drive_minutes = as.numeric(drive_minutes), drive_seconds = as.numeric(drive_seconds), 
            drive_possession_seconds = drive_minutes * 60 + drive_seconds) %>%
@@ -136,11 +136,10 @@ library(nflreadr)
            redzone = ifelse(yardline_100 <= 20, 1, 0),
            garbage = ifelse(wp <= 0.1 | wp >= 0.9, 1, 0)) %>%
     left_join(pass_data, by = c("id" = "passer_player_id", "week", "down", "qtr", "home", "redzone", "garbage")) %>%
-        # filter(desc == "(:28) (No Huddle) 16-J.Goff spiked the ball to stop the clock.")
     left_join(rush_data, by = c("id" = "rusher_player_id", "week", "down", "qtr", "home", "redzone", "garbage")) %>%
-    left_join(teams, by = c('team_abbr' = 'team_abbr')) %>%
+    left_join(teams, by = c('posteam' = 'team_abbr')) %>%
     group_by(id, week, down, qtr, home, redzone, garbage) %>%
-    summarize(player_short_name = last(player_short_name),
+    reframe(player_short_name = last(player_short_name),
               player_display_name = last(player_display_name),
               height = last(height),
               draft_number = last(draft_number),
@@ -188,23 +187,32 @@ library(nflreadr)
               first_down_pass = sum(first_down_pass, na.rm = TRUE),
               att_seconds_per_play = sum(drive_possession_seconds, na.rm = TRUE) / sum(drive_play_count, na.rm = TRUE) * data_attempts,
               team_color = last(team_color)) %>%
-    filter(!is.na(attempts)) %>%
+    #filter(!is.na(attempts)) %>%
     left_join(ngs, by = c("id" = "player_gsis_id", "week")) %>%
     left_join(combine, by = c("player_display_name" = "player_name")) %>%
     left_join(contracts, by = c("player_display_name" = "player")) %>%
     filter(!is.na(id))
   
-  #data does not contain week 17, qtr 4, down 1, redzone row but pass_data does...
-    # load_pbp is grouping by id but when the group is just spikes, there is no id, so the pass_data has nothing to joing to
   
- # data_test <- data %>%
-  #  group_by(id, Quarterback) %>%
-   # filter(team_abbr == "DET", week == 17, qtr == 4, down == 1) %>%
-   # reframe(attemptss = sum(attempts),
-    #        comp = sum(completions),
-     #       yards = sum(passing_yards),
-      #      td = sum(pass_touchdown))
+  
+  data_test <- data %>%
+    group_by(id) %>%
+     reframe(attemptss = sum(attempts, na.rm = T),
+             comp = sum(completions, na.rm = T),
+             yards = sum(passing_yards, na.rm = T),
+             td = sum(pass_touchdown, na.rm = T),
+             plays = sum(data_attempts, na.rm = T),
+             epa = sum(qb_epa, na.rm = T) / plays)
     
+  
+  
+  rbsdm_test <- load_pbp() %>%
+    filter(!is.na(down), !is.na(epa), pass+rush == 1) %>%
+    filter(week <= 18) %>%
+    group_by(id, name) %>%
+    reframe(plays = n(),
+            epa = mean(qb_epa)) %>%
+    filter(plays >= 320)
   
 #  pass_data_test <- pass_data %>%
   #  filter(team_abbr == "DET", week == 17, qtr == 4, down == 1) %>%
