@@ -98,10 +98,10 @@ library(nflreadr)
       mutate(home = ifelse(home_team == posteam, 1, 0),
              redzone = ifelse(yardline_100 <= 20, 1, 0),
              garbage = ifelse(wp <= 0.1 | wp >= 0.9, 1, 0)) %>%
-       group_by(passer_player_id, week, down, qtr, home, redzone, garbage) %>%
-       summarize(Quarterback = last(Quarterback),
-                 player_short_name = last(short_name),
-                 player_display_name = last(display_name),
+      group_by(passer_player_id, week, down, qtr, home, redzone, garbage) %>%
+      summarize(Quarterback = last(Quarterback[!is.na(Quarterback)]),
+                player_short_name = last(short_name[!is.na(short_name)]),
+                player_display_name = last(display_name[!is.na(display_name)]),
                  team_abbr = last(posteam),
                  attempts = sum(complete_pass == 1 | incomplete_pass == 1 | interception == 1, na.rm = T),
                  sack_fumbles = sum(fumble == 1 & fumbled_1_player_id == passer_player_id),
