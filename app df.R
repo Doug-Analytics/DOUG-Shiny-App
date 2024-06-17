@@ -50,7 +50,7 @@ library(nflreadr)
   players <- load_players() %>%
     mutate(
            draft_number = as.numeric(draft_number),
-           jersey_number = as.numeric(jersey_number),
+           jersey_number = as.numeric(uniform_number),
            weight = as.numeric(weight),
            bmi = (weight / (height^2)) * 703) %>%
   #         birth_month = as.integer(format(as.Date(birth_date), "%m")),
