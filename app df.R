@@ -93,21 +93,22 @@ library(nflreadr)
     pass_data <- load_pbp() %>%
        filter(!is.na(down)) %>%
        filter(week <= 18) %>%
-      left_join(players, by = c('passer_player_id' = 'gsis_id')) %>%
-      mutate(Quarterback = paste(display_name, " (", posteam, ")", sep = "")) %>%
+   #   left_join(players, by = c('passer_player_id' = 'gsis_id')) %>%
+    #  mutate(Quarterback = paste(display_name, " (", posteam, ")", sep = "")) %>%
       mutate(home = ifelse(home_team == posteam, 1, 0),
              redzone = ifelse(yardline_100 <= 20, 1, 0),
              garbage = ifelse(wp <= 0.1 | wp >= 0.9, 1, 0)) %>%
       group_by(passer_player_id, week, down, qtr, home, redzone, garbage) %>%
-      summarize(Quarterback = last(Quarterback[!is.na(Quarterback)]),
-                player_short_name = last(short_name[!is.na(short_name)]),
-                player_display_name = last(display_name[!is.na(display_name)]),
+      summarize(#Quarterback = last(Quarterback[!is.na(Quarterback)]),
+                #player_short_name = last(short_name[!is.na(short_name)]),
+                #player_display_name = last(display_name[!is.na(display_name)]),
                  team_abbr = last(posteam),
                  attempts = sum(complete_pass == 1 | incomplete_pass == 1 | interception == 1, na.rm = T),
                  sack_fumbles = sum(fumble == 1 & fumbled_1_player_id == passer_player_id),
                  sack_fumbles_lost = sum(fumble_lost == 1 & fumbled_1_player_id == passer_player_id & fumble_recovery_1_team != posteam),
                  pass_plays = n()) %>%
-      left_join(players, by = c('passer_player_id' = 'gsis_id')) 
+     # left_join(players, by = c('passer_player_id' = 'gsis_id')) %>%
+      filter(!is.na(passer_player_id))
             
     
     
@@ -118,6 +119,7 @@ library(nflreadr)
       mutate(home = ifelse(home_team == posteam, 1, 0),
              redzone = ifelse(yardline_100 <= 20, 1, 0),
              garbage = ifelse(wp <= 0.1 | wp >= 0.9, 1, 0)) %>%
+    #  left_join(players, by = c('rusher_player_id' = 'gsis_id')) %>%
       group_by(rusher_player_id, week, down, qtr, home, redzone, garbage) %>%
       summarize(rush_fumbles = sum(fumble == 1 & fumbled_1_player_id == rusher_player_id),
                 rush_fumbles_lost = sum(fumble_lost == 1 & fumbled_1_player_id == rusher_player_id & fumble_recovery_1_team != posteam),
@@ -139,16 +141,16 @@ library(nflreadr)
     left_join(rush_data, by = c("id" = "rusher_player_id", "week", "down", "qtr", "home", "redzone", "garbage")) %>%
     left_join(teams, by = c('posteam' = 'team_abbr')) %>%
     group_by(id, week, down, qtr, home, redzone, garbage) %>%
-    reframe(player_short_name = last(player_short_name),
-              player_display_name = last(player_display_name),
-              height = last(height),
-              draft_number = last(draft_number),
-              jersey_number = last(uniform_number),
-              bmi = last(bmi),
-              weight = last(weight),
-              years_of_experience = max(as.numeric(years_of_experience)),
-              team_abbr = last(team_abbr),
-              Quarterback = last(Quarterback),
+    reframe(#  player_short_name = last(short_name[!is.na(short_name)]),
+             # player_display_name = last(display_name[!is.na(display_name)]),
+             # height = last(height),
+            #  draft_number = last(draft_number),
+            #  jersey_number = last(uniform_number),
+            #  bmi = last(bmi),
+            #  weight = last(weight),
+            #  years_of_experience = max(as.numeric(years_of_experience)),
+              team_abbr = last(posteam),
+           #   Quarterback = last(Quarterback),
               data_attempts = n(),
               attempts = last(attempts),
               rush_attempts = sum(rush + qb_scramble, na.rm = TRUE),
@@ -189,9 +191,12 @@ library(nflreadr)
               team_color = last(team_color)) %>%
     #filter(!is.na(attempts)) %>%
     left_join(ngs, by = c("id" = "player_gsis_id", "week")) %>%
-    left_join(combine, by = c("player_display_name" = "player_name")) %>%
-    left_join(contracts, by = c("player_display_name" = "player")) %>%
-    filter(!is.na(id))
+    left_join(players, by = c('id' = 'gsis_id')) %>%
+    left_join(combine, by = c("display_name" = "player_name")) %>%
+    left_join(contracts, by = c("display_name" = "player")) %>%
+    filter(!is.na(id)) %>%
+    mutate(Quarterback = paste(display_name, " (", team_abbr, ")", sep = ""))
+
   
   
   
