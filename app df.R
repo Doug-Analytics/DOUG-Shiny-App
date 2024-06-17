@@ -50,7 +50,7 @@ library(nflreadr)
   players <- load_players() %>%
     mutate(
            draft_number = as.numeric(draft_number),
-           uniform_number = as.numeric(jersey_number),
+           jersey_number = as.numeric(jersey_number),
            weight = as.numeric(weight),
            bmi = (weight / (height^2)) * 703) %>%
   #         birth_month = as.integer(format(as.Date(birth_date), "%m")),
@@ -71,7 +71,7 @@ library(nflreadr)
   #           TRUE ~ "Unknown"  # Default case for unknown star signs
   #         )) %>%
     group_by(gsis_id) %>%
-    summarize(short_name, display_name, height, weight, draft_number, uniform_number, bmi, years_of_experience)
+    summarize(short_name, display_name, height, weight, draft_number, jersey_number, bmi, years_of_experience)
   
 #  player_stats <- load_player_stats(seasons = 2023) %>%
 #    filter(position == "QB") %>%
@@ -145,7 +145,7 @@ library(nflreadr)
              # player_display_name = last(display_name[!is.na(display_name)]),
              # height = last(height),
             #  draft_number = last(draft_number),
-            #  jersey_number = last(uniform_number),
+            #  jersey_number = last(jersey_number),
             #  bmi = last(bmi),
             #  weight = last(weight),
             #  years_of_experience = max(as.numeric(years_of_experience)),
