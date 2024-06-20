@@ -50,7 +50,7 @@ jobs:
         uses: actions/checkout@v3
 
       - name: Import data
-        run: Rscript -e 'source("app df.R")'
+        run: Rscript -e 'source("DOUG Shiny App Dataframe Code.R.R")'
 
       - name: Commit results
         run: |
