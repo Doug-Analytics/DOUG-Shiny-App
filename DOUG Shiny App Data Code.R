@@ -1,9 +1,6 @@
 library(tidyverse)
 library(nflreadr)
 
-
-  dic <- dictionary_pbp
-  
   teams <- load_teams() %>%
     mutate(team_color = ifelse(team_color == "#D3BC8D", "#857952", team_color)) %>%
     select(team_abbr, team_color)
@@ -53,63 +50,25 @@ library(nflreadr)
            jersey_number = as.numeric(uniform_number),
            weight = as.numeric(weight),
            bmi = (weight / (height^2)) * 703) %>%
-  #         birth_month = as.integer(format(as.Date(birth_date), "%m")),
-  #         birth_day = as.integer(format(as.Date(birth_date), "%d")),
-  #         star_sign = case_when(
-  #           (birth_month == 3 & birth_day >= 21) | (birth_month == 4 & birth_day <= 19) ~ "Aries",
-  #           (birth_month == 4 & birth_day >= 20) | (birth_month == 5 & birth_day <= 20) ~ "Taurus",
-  #           (birth_month == 5 & birth_day >= 21) | (birth_month == 6 & birth_day <= 20) ~ "Gemini",
-  #           (birth_month == 6 & birth_day >= 21) | (birth_month == 7 & birth_day <= 22) ~ "Cancer",
-  #           (birth_month == 7 & birth_day >= 23) | (birth_month == 8 & birth_day <= 22) ~ "Leo",
-  #           (birth_month == 8 & birth_day >= 23) | (birth_month == 9 & birth_day <= 22) ~ "Virgo",
-  #           (birth_month == 9 & birth_day >= 23) | (birth_month == 10 & birth_day <= 22) ~ "Libra",
-  #           (birth_month == 10 & birth_day >= 23) | (birth_month == 11 & birth_day <= 21) ~ "Scorpio",
-  #           (birth_month == 11 & birth_day >= 22) | (birth_month == 12 & birth_day <= 21) ~ "Sagittarius",
-  #           (birth_month == 12 & birth_day >= 22) | (birth_month == 1 & birth_day <= 19) ~ "Capricorn",
-  #           (birth_month == 1 & birth_day >= 20) | (birth_month == 2 & birth_day <= 18) ~ "Aquarius",
-  #           (birth_month == 2 & birth_day >= 19) | (birth_month == 3 & birth_day <= 20) ~ "Pisces",
-  #           TRUE ~ "Unknown"  # Default case for unknown star signs
-  #         )) %>%
     group_by(gsis_id) %>%
     summarize(position, short_name, display_name, height, weight, draft_number, jersey_number, bmi,
               years_of_experience = as.numeric(years_of_experience))
-  
-#  player_stats <- load_player_stats(seasons = 2023) %>%
-#    filter(position == "QB") %>%
-#    mutate(Quarterback = paste(player_display_name, " (", recent_team, ")", sep = "")) %>%
-#    group_by(player_id, week) %>%
-#    summarize(attempts,
-#              fumbles = sum(sack_fumbles + rushing_fumbles, na.rm = TRUE),
-#              fumbles_lost = sum(sack_fumbles_lost + rushing_fumbles_lost, na.rm = TRUE),
-#              position,
-#              player_short_name = player_name,
-#              player_display_name,
-#              team_abbr = recent_team,
-#              Quarterback) %>%
-#    left_join(players, by = c('player_id' = 'gsis_id'))
   
   dic <- dictionary_pbp
   
   
     pass_data <- load_pbp() %>%
        filter(!is.na(down)) %>%
-       filter(week <= 18) %>%
-   #   left_join(players, by = c('passer_player_id' = 'gsis_id')) %>%
-    #  mutate(Quarterback = paste(display_name, " (", posteam, ")", sep = "")) %>%
       mutate(home = ifelse(home_team == posteam, 1, 0),
              redzone = ifelse(yardline_100 <= 20, 1, 0),
              garbage = ifelse(wp <= 0.1 | wp >= 0.9, 1, 0),
              qtr = ifelse(qtr == 5, "OT", qtr)) %>%
       group_by(passer_player_id, week, down, qtr, home, redzone, garbage) %>%
-      summarize(#Quarterback = last(Quarterback[!is.na(Quarterback)]),
-                #player_short_name = last(short_name[!is.na(short_name)]),
-                #player_display_name = last(display_name[!is.na(display_name)]),
-                 team_abbr = last(posteam),
+      summarize( team_abbr = last(posteam),
                  attempts = sum(complete_pass == 1 | incomplete_pass == 1 | interception == 1, na.rm = T),
                  sack_fumbles = sum(fumble == 1 & fumbled_1_player_id == passer_player_id),
                  sack_fumbles_lost = sum(fumble_lost == 1 & fumbled_1_player_id == passer_player_id & fumble_recovery_1_team != posteam),
                  pass_plays = n()) %>%
-     # left_join(players, by = c('passer_player_id' = 'gsis_id')) %>%
       filter(!is.na(passer_player_id))
             
     
@@ -117,12 +76,10 @@ library(nflreadr)
     
     rush_data <- load_pbp() %>%
       filter(!is.na(down)) %>%
-      filter(week <= 18) %>%
       mutate(home = ifelse(home_team == posteam, 1, 0),
              redzone = ifelse(yardline_100 <= 20, 1, 0),
              garbage = ifelse(wp <= 0.1 | wp >= 0.9, 1, 0),
              qtr = ifelse(qtr == 5, "OT", qtr)) %>%
-    #  left_join(players, by = c('rusher_player_id' = 'gsis_id')) %>%
       group_by(rusher_player_id, week, down, qtr, home, redzone, garbage) %>%
       summarize(rush_fumbles = sum(fumble == 1 & fumbled_1_player_id == rusher_player_id),
                 rush_fumbles_lost = sum(fumble_lost == 1 & fumbled_1_player_id == rusher_player_id & fumble_recovery_1_team != posteam),
@@ -132,7 +89,6 @@ library(nflreadr)
     
   data <- load_pbp() %>%
     filter(!is.na(down), !is.na(epa), pass+rush == 1) %>%
-    filter(week <= 18) %>%
     mutate(id = ifelse(is.na(id), passer_player_id, id),
            qtr = ifelse(qtr == 5, "OT", qtr)) %>%
     separate(drive_time_of_possession, into = c("drive_minutes", "drive_seconds"), sep = ":") %>%
@@ -145,16 +101,7 @@ library(nflreadr)
     left_join(rush_data, by = c("id" = "rusher_player_id", "week", "down", "qtr", "home", "redzone", "garbage")) %>%
     left_join(teams, by = c('posteam' = 'team_abbr')) %>%
     group_by(id, week, down, qtr, home, redzone, garbage) %>%
-    reframe(#  player_short_name = last(short_name[!is.na(short_name)]),
-             # player_display_name = last(display_name[!is.na(display_name)]),
-             # height = last(height),
-            #  draft_number = last(draft_number),
-            #  jersey_number = last(jersey_number),
-            #  bmi = last(bmi),
-            #  weight = last(weight),
-            #  years_of_experience = max(as.numeric(years_of_experience)),
-              team_abbr = last(posteam),
-           #   Quarterback = last(Quarterback),
+    reframe(  team_abbr = last(posteam),
               data_attempts = n(),
               attempts = last(attempts),
               rush_attempts = sum(rush + qb_scramble, na.rm = TRUE),
@@ -193,7 +140,6 @@ library(nflreadr)
               first_down_pass = sum(first_down_pass, na.rm = TRUE),
               att_seconds_per_play = sum(drive_possession_seconds, na.rm = TRUE) / sum(drive_play_count, na.rm = TRUE) * data_attempts,
               team_color = last(team_color)) %>%
-    #filter(!is.na(attempts)) %>%
     left_join(ngs, by = c("id" = "player_gsis_id", "week")) %>%
     left_join(players, by = c('id' = 'gsis_id')) %>%
      filter(position == "QB") %>%
@@ -202,46 +148,5 @@ library(nflreadr)
     filter(!is.na(id)) %>%
     mutate(Quarterback = paste(display_name, " (", team_abbr, ")", sep = ""))
 
-  
-  
-  
-  data_test <- data %>%
-    filter(down == 2, qtr == 1, home == 1, redzone == 1, week == 11) %>%
-    group_by(id) %>%
-     reframe(short_name = last(short_name),
-             attemptss = sum(attempts, na.rm = T),
-             comp = sum(completions, na.rm = T),
-             yards = sum(passing_yards, na.rm = T),
-             td = sum(pass_touchdown, na.rm = T),
-             plays = sum(data_attempts, na.rm = T),
-             epa = sum(qb_epa, na.rm = T) / plays,
-             cpoe = sum(cpoe, na.rm = TRUE)/sum(cp_attempts, na.rm = TRUE)/100) %>%
-    filter(plays >= 2)
-    
-  
-  
-  rbsdm_test <- load_pbp() %>%
-    filter(!is.na(down), !is.na(epa), pass+rush == 1) %>%
-    filter(week <= 18) %>%
-    group_by(id, name) %>%
-    reframe(plays = n(),
-            epa = mean(qb_epa),
-            cpoe = mean(cpoe, na.rm = T)) %>%
-    filter(plays >= 270)
-  
-#  pass_data_test <- pass_data %>%
-  #  filter(team_abbr == "DET", week == 17, qtr == 4, down == 1) %>%
-#    group_by(passer_player_id, Quarterback) %>%
-    # filter(team_abbr == "DET", week == 17, qtr == 4, down == 1) %>%
- #   reframe(attemptss = sum(attempts))
-  
-#  test <- load_pbp() %>%
- #   filter(is.na(id)) %>%
-  #  mutate(home = ifelse(home_team == posteam, 1, 0),
-#           redzone = ifelse(yardline_100 <= 20, 1, 0),
-#           garbage = ifelse(wp <= 0.1 | wp >= 0.9, 1, 0)) %>%
-#    filter(posteam == "DET", week == 17, qtr == 4, down == 1) %>%
-#    select(passer_player_id, id, passer_player_name, garbage, redzone, desc, complete_pass, incomplete_pass, interception)
-  
-  saveRDS(data, "2023_pbp_ngs_df_new.rds")
+  saveRDS(data, "DOUG_data.rds")
   
