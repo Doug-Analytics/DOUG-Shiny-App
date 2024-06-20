@@ -71,7 +71,8 @@ library(nflreadr)
   #           TRUE ~ "Unknown"  # Default case for unknown star signs
   #         )) %>%
     group_by(gsis_id) %>%
-    summarize(short_name, display_name, height, weight, draft_number, jersey_number, bmi, years_of_experience)
+    summarize(position, short_name, display_name, height, weight, draft_number, jersey_number, bmi,
+              years_of_experience = as.numeric(years_of_experience))
   
 #  player_stats <- load_player_stats(seasons = 2023) %>%
 #    filter(position == "QB") %>%
@@ -192,6 +193,7 @@ library(nflreadr)
     #filter(!is.na(attempts)) %>%
     left_join(ngs, by = c("id" = "player_gsis_id", "week")) %>%
     left_join(players, by = c('id' = 'gsis_id')) %>%
+     filter(position == "QB") %>%
     left_join(combine, by = c("display_name" = "player_name")) %>%
     left_join(contracts, by = c("display_name" = "player")) %>%
     filter(!is.na(id)) %>%
