@@ -98,7 +98,8 @@ library(nflreadr)
     #  mutate(Quarterback = paste(display_name, " (", posteam, ")", sep = "")) %>%
       mutate(home = ifelse(home_team == posteam, 1, 0),
              redzone = ifelse(yardline_100 <= 20, 1, 0),
-             garbage = ifelse(wp <= 0.1 | wp >= 0.9, 1, 0)) %>%
+             garbage = ifelse(wp <= 0.1 | wp >= 0.9, 1, 0),
+             qtr = ifelse(qtr == 5, "OT", qtr)) %>%
       group_by(passer_player_id, week, down, qtr, home, redzone, garbage) %>%
       summarize(#Quarterback = last(Quarterback[!is.na(Quarterback)]),
                 #player_short_name = last(short_name[!is.na(short_name)]),
@@ -119,7 +120,8 @@ library(nflreadr)
       filter(week <= 18) %>%
       mutate(home = ifelse(home_team == posteam, 1, 0),
              redzone = ifelse(yardline_100 <= 20, 1, 0),
-             garbage = ifelse(wp <= 0.1 | wp >= 0.9, 1, 0)) %>%
+             garbage = ifelse(wp <= 0.1 | wp >= 0.9, 1, 0),
+             qtr = ifelse(qtr == 5, "OT", qtr)) %>%
     #  left_join(players, by = c('rusher_player_id' = 'gsis_id')) %>%
       group_by(rusher_player_id, week, down, qtr, home, redzone, garbage) %>%
       summarize(rush_fumbles = sum(fumble == 1 & fumbled_1_player_id == rusher_player_id),
@@ -131,7 +133,8 @@ library(nflreadr)
   data <- load_pbp() %>%
     filter(!is.na(down), !is.na(epa), pass+rush == 1) %>%
     filter(week <= 18) %>%
-    mutate(id = ifelse(is.na(id), passer_player_id, id)) %>%
+    mutate(id = ifelse(is.na(id), passer_player_id, id),
+           qtr = ifelse(qtr == 5, "OT", qtr)) %>%
     separate(drive_time_of_possession, into = c("drive_minutes", "drive_seconds"), sep = ":") %>%
     mutate(drive_minutes = as.numeric(drive_minutes), drive_seconds = as.numeric(drive_seconds), 
            drive_possession_seconds = drive_minutes * 60 + drive_seconds) %>%
@@ -203,13 +206,17 @@ library(nflreadr)
   
   
   data_test <- data %>%
+    filter(down == 2, qtr == 1, home == 1, redzone == 1, week == 11) %>%
     group_by(id) %>%
-     reframe(attemptss = sum(attempts, na.rm = T),
+     reframe(short_name = last(short_name),
+             attemptss = sum(attempts, na.rm = T),
              comp = sum(completions, na.rm = T),
              yards = sum(passing_yards, na.rm = T),
              td = sum(pass_touchdown, na.rm = T),
              plays = sum(data_attempts, na.rm = T),
-             epa = sum(qb_epa, na.rm = T) / plays)
+             epa = sum(qb_epa, na.rm = T) / plays,
+             cpoe = sum(cpoe, na.rm = TRUE)/sum(cp_attempts, na.rm = TRUE)/100) %>%
+    filter(plays >= 2)
     
   
   
@@ -218,8 +225,9 @@ library(nflreadr)
     filter(week <= 18) %>%
     group_by(id, name) %>%
     reframe(plays = n(),
-            epa = mean(qb_epa)) %>%
-    filter(plays >= 320)
+            epa = mean(qb_epa),
+            cpoe = mean(cpoe, na.rm = T)) %>%
+    filter(plays >= 270)
   
 #  pass_data_test <- pass_data %>%
   #  filter(team_abbr == "DET", week == 17, qtr == 4, down == 1) %>%
@@ -236,5 +244,4 @@ library(nflreadr)
 #    select(passer_player_id, id, passer_player_name, garbage, redzone, desc, complete_pass, incomplete_pass, interception)
   
   saveRDS(data, "2023_pbp_ngs_df_new.rds")
-  
   
