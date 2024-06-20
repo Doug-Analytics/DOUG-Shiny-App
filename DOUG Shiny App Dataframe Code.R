@@ -5,7 +5,6 @@ library(nflreadr)
     mutate(team_color = ifelse(team_color == "#D3BC8D", "#857952", team_color)) %>%
     select(team_abbr, team_color)
   
-  
   ngs <- load_nextgen_stats(stat_type = c("passing")) %>%
     mutate(week = ifelse(week == 23, 22, week)) %>%
     filter(season == "2023") %>%
