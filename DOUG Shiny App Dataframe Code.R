@@ -148,7 +148,7 @@ data <- load_pbp() %>%
             twenty_air_yard_attempts = sum(pass_attempt[air_yards >= 20], na.rm = TRUE),
             first_down_pass = sum(first_down_pass, na.rm = TRUE),
             att_seconds_per_play = sum(drive_possession_seconds, na.rm = TRUE) / sum(drive_play_count, na.rm = TRUE) * data_attempts,
-             play_clock_remain = sum(as.numeric(play_clock), na.rm = TRUE),
+          #   play_clock_remain = sum(as.numeric(play_clock), na.rm = TRUE),
              points_favored = last(ifelse(posteam == home_team, spread_line, -spread_line)),
              closing_total = tail(na.omit(total_line), 1),
             team_color = last(team_color)) %>%
