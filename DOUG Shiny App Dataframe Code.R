@@ -124,7 +124,9 @@ data <- load_pbp() %>%
              comp_air_yards = sum(air_yards[complete_pass == 1], na.rm = TRUE),
              incomp_air_yards = sum(air_yards[incomplete_pass == 1], na.rm = TRUE),
              int_air_yards = sum(air_yards[interception == 1], na.rm = TRUE),
-             dist_to_sticks = sum(ydstogo[!is.na(cp)], na.rm = TRUE),
+             dist_to_sticks = sum(ydstogo, na.rm = TRUE),
+             wpa = sum(vegas_wpa, na.rm = T),
+             air_yards_to_sticks = sum(air_yards, na.rm = T) - sum(ydstogo, na.rm = T),
             sacks = sum(sack, na.rm = TRUE),
             tot_sack_yards = sum(-yards_gained[sack == 1], na.rm = TRUE),
             tot_scramble_yards = sum(yards_gained[qb_scramble == 1], na.rm = TRUE),
@@ -136,16 +138,19 @@ data <- load_pbp() %>%
             tot_fumble = sum(sack_fumbles + rush_fumbles, na.rm = T),
             tot_fumble_lost = sum(sack_fumbles_lost + rush_fumbles_lost, na.rm = T),
             tot_turnover = sum(tot_fumble_lost, interception),
-             tot_turnover_epa = sum(epa[interception == 1 | sack_fumbles_lost == 1 | rush_fumbles_lost == 1], na.rm = TRUE),
+             tot_turnover_epa = sum(qb_epa[interception == 1 | sack_fumbles_lost == 1 | rush_fumbles_lost == 1], na.rm = TRUE),
              tot_turnover_wpa = sum(vegas_wpa[interception == 1 | sack_fumbles_lost == 1 | rush_fumbles_lost == 1], na.rm = TRUE),
+             tot_qb_hits = sum(qb_hit, na.rm = T),
             tot_touchdown = sum(touchdown, na.rm = TRUE),
             nflfastr_attempts = sum(complete_pass, incomplete_pass, interception, na.rm = TRUE),
             ten_yard_completions = sum(ifelse(yards_gained >= 10 & complete_pass == 1, 1, 0), na.rm = TRUE),
             twenty_yard_completions = sum(ifelse(yards_gained >= 20 & complete_pass == 1, 1, 0), na.rm = TRUE),
             twenty_air_yard_attempts = sum(pass_attempt[air_yards >= 20], na.rm = TRUE),
             first_down_pass = sum(first_down_pass, na.rm = TRUE),
-            
             att_seconds_per_play = sum(drive_possession_seconds, na.rm = TRUE) / sum(drive_play_count, na.rm = TRUE) * data_attempts,
+             play_clock_remain = sum(as.numeric(play_clock), na.rm = TRUE),
+             points_favored = last(ifelse(posteam == home_team, spread_line, -spread_line)),
+             closing_total = tail(na.omit(total_line), 1),
             team_color = last(team_color)) %>%
   left_join(ngs, by = c("id" = "player_gsis_id", "week")) %>%
   left_join(players, by = c('id' = 'gsis_id')) %>%
