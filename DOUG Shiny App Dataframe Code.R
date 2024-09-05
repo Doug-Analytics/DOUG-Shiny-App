@@ -7,7 +7,7 @@ teams <- load_teams() %>%
 
 ngs <- load_nextgen_stats(stat_type = c("passing")) %>%
   mutate(week = ifelse(week == 23, 22, week)) %>%
-  filter(season == "2023") %>%
+  filter(season == "2024") %>%
   filter(week >= 1) %>%
   arrange(player_last_name) %>%
   mutate(att_avg_time_to_throw = attempts*avg_time_to_throw) %>%
@@ -127,6 +127,7 @@ data <- load_pbp() %>%
              dist_to_sticks = sum(ydstogo, na.rm = TRUE),
              wpa = sum(vegas_wpa, na.rm = T),
              air_yards_to_sticks = sum(air_yards, na.rm = T) - sum(ydstogo, na.rm = T),
+             air_past_sticks_pct = 
             sacks = sum(sack, na.rm = TRUE),
             tot_sack_yards = sum(-yards_gained[sack == 1], na.rm = TRUE),
             tot_scramble_yards = sum(yards_gained[qb_scramble == 1], na.rm = TRUE),
@@ -151,6 +152,7 @@ data <- load_pbp() %>%
           #   play_clock_remain = sum(as.numeric(play_clock), na.rm = TRUE),
              points_favored = last(ifelse(posteam == home_team, spread_line, -spread_line)),
              closing_total = tail(na.omit(total_line), 1),
+             first_down_rush = sum(first_down_rush, na.rm = TRUE),
             team_color = last(team_color)) %>%
   left_join(ngs, by = c("id" = "player_gsis_id", "week")) %>%
   left_join(players, by = c('id' = 'gsis_id')) %>%
