@@ -127,7 +127,7 @@ data <- load_pbp() %>%
              dist_to_sticks = sum(ydstogo, na.rm = TRUE),
              wpa = sum(vegas_wpa, na.rm = T),
              air_yards_to_sticks = sum(air_yards, na.rm = T) - sum(ydstogo, na.rm = T),
-             air_past_sticks_pct = 
+        #     air_past_sticks_pct = 
             sacks = sum(sack, na.rm = TRUE),
             tot_sack_yards = sum(-yards_gained[sack == 1], na.rm = TRUE),
             tot_scramble_yards = sum(yards_gained[qb_scramble == 1], na.rm = TRUE),
