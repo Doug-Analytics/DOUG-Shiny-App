@@ -130,6 +130,7 @@ data <- load_pbp() %>%
         #     air_past_sticks_pct = 
             sacks = sum(sack, na.rm = TRUE),
             tot_sack_yards = sum(-yards_gained[sack == 1], na.rm = TRUE),
+            tot_sack_epa = sum(qb_epa[sack == 1], na.rm = TRUE),
             tot_scramble_yards = sum(yards_gained[qb_scramble == 1], na.rm = TRUE),
             tot_scramble_epa = sum(epa[qb_scramble == 1], na.rm = TRUE),
             tot_pass = sum(ifelse(play_type == "pass", 1, 0)),
