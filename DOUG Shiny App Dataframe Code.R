@@ -45,8 +45,8 @@ contracts <- load_contracts() %>%
 
 players <- load_players() %>%
   mutate(
-    draft_number = as.numeric(draft_number),
-    jersey_number = as.numeric(uniform_number),
+    draft_number = as.numeric(draft_pick),
+    jersey_number = as.numeric(jersey_number),
     weight = as.numeric(weight),
     bmi = (weight / (height^2)) * 703) %>%
   group_by(gsis_id) %>%
