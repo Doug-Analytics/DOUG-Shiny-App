@@ -7,7 +7,7 @@ teams <- load_teams() %>%
 
 ngs <- load_nextgen_stats(stat_type = c("passing")) %>%
   mutate(week = ifelse(week == 23, 22, week)) %>%
-  filter(season == "2024") %>%
+  filter(season == "2025") %>%
   filter(week >= 1) %>%
   arrange(player_last_name) %>%
   mutate(att_avg_time_to_throw = attempts*avg_time_to_throw) %>%
@@ -164,3 +164,4 @@ data <- load_pbp() %>%
   mutate(Quarterback = paste(display_name, " (", team_abbr, ")", sep = ""))
 
 saveRDS(data, "DOUG_data.rds")
+
