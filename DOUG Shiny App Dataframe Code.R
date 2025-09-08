@@ -48,7 +48,8 @@ players <- load_players() %>%
     draft_number = as.numeric(draft_pick),
     jersey_number = as.numeric(jersey_number),
     weight = as.numeric(weight),
-    bmi = (weight / (height^2)) * 703) %>%
+    bmi = (weight / (height^2)) * 703,
+    short_name  = ifelse(display_name == "Sam Darnold", "S.Darnold", short_name)) %>%
   group_by(gsis_id) %>%
   summarize(position, short_name, display_name, height, weight, draft_number, jersey_number, bmi,
             years_of_experience = as.numeric(years_of_experience))
@@ -164,4 +165,3 @@ data <- load_pbp() %>%
   mutate(Quarterback = paste(display_name, " (", team_abbr, ")", sep = ""))
 
 saveRDS(data, "DOUG_data.rds")
-
