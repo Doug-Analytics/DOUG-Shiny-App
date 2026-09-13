@@ -1,13 +1,14 @@
 library(tidyverse)
 library(nflreadr)
 
+season <- get_current_season()
+
 teams <- load_teams() %>%
   mutate(team_color = ifelse(team_color == "#D3BC8D", "#857952", team_color)) %>%
   select(team_abbr, team_color)
 
-ngs <- load_nextgen_stats(stat_type = c("passing")) %>%
+ngs <- load_nextgen_stats(stat_type = c("passing"), seasons = season) %>%
   mutate(week = ifelse(week == 23, 22, week)) %>%
-  filter(season == "2025") %>%
   filter(week >= 1) %>%
   arrange(player_last_name) %>%
   mutate(att_avg_time_to_throw = attempts*avg_time_to_throw) %>%
@@ -40,7 +41,7 @@ contracts <- load_contracts() %>%
   filter(year_signed == max(year_signed) | (year_signed == max(year_signed) & apy == max(apy))) %>%
   slice_max(order_by = apy) %>%
   ungroup() %>%
-  select(player, apy, guaranteed, guarantee_pct, year_signed) %>%
+  select(player, gsis_id, apy, guaranteed, guarantee_pct, year_signed) %>%
   distinct()
 
 players <- load_players() %>%
@@ -160,7 +161,7 @@ data <- load_pbp() %>%
   left_join(players, by = c('id' = 'gsis_id')) %>%
   filter(position == "QB") %>%
   left_join(combine, by = c("display_name" = "player_name")) %>%
-  left_join(contracts, by = c("display_name" = "player")) %>%
+  left_join(contracts, by = c('id' = 'gsis_id')) %>%
   filter(!is.na(id)) %>%
   mutate(Quarterback = paste(display_name, " (", team_abbr, ")", sep = ""))
 
