@@ -13,12 +13,14 @@ library(shinycssloaders)
 options(scipen = 9999)
 
 url <- "https://i.imgur.com/KkChzbk.png"
+#gif_url <- "https://i.imgur.com/vrIhLg4.gif"
 image <- image_read(url)
 
 data <- readRDS(gzcon(url("https://github.com/Doug-Analytics/Shiny/raw/main/DOUG_data.rds")))
-  
 
-# setwd("G:/My Drive/Giants/Code/DOUG Shiny App")
+ #setwd("G:/My Drive/Giants/Code/DOUG Shiny App")
+
+season <- get_current_season()
 
 ################################################################################
 
@@ -44,8 +46,8 @@ ui <- fluidPage(
                      class="btn btn-success",
                      icon("mug-hot"), " Buy Me a Coffee")
   ),
-
-
+  
+  
   sidebarLayout(
     sidebarPanel(
       
@@ -54,13 +56,14 @@ ui <- fluidPage(
       selectInput("y_axis",
                   "Y Axis:",
                   choices = list(
-                    "Advanced Passing Stats" = c("EPA/Play", "Completion % Over Expected", "Total EPA", "Success Rate","EPA/Pass", "Expected Completion %"),
-                    "NextGenStats (no filters)" = c("Avg Time to Throw","Avg Completed Air Yards", "Avg Intended Air Yards", "Avg Air Yards Differential", "Aggressiveness", "Max Completed Air Distance", "Avg Air Yards to Sticks", "CPOE (NGS)", "Expected Completion % (NGS)"),
-                    "Basic Passing Stats" = c("Attempts", "Completions", "Completion %", "Passing Yards", "Yards per Attempt", "Yards per Completion", "Passing Touchdowns", "Total Touchdowns", "TD %", "Passing 1st Downs", "Passing 1st Down %", "YAC per Completion", "Net Yards per Attempt", "Adjusted Yards per Attempt", "Adjusted Net Yards per Attempt", "Passer Rating"),
+                    "Advanced Passing Stats" = c("EPA/Play", "Completion % Over Expected", "Total EPA", "Success Rate","EPA/Pass", "Expected Completion %", "WPA/Play", "Total WPA"),
+                    "NextGenStats (no filters)" = c("Avg Time to Throw","Aggressiveness", "Max Completed Air Distance", "CPOE (NGS)", "Expected Completion % (NGS)"),
+                    "Air Yards (nflfastR)" = c("Avg Intended Air Yards", "Avg Completed Air Yards", "Avg Incomplete Air Yards",  "Avg Air Yards Differential", "Avg Interception Air Yards", "Avg Air Yards to Sticks", "Air Yards Past Sticks %"),
+                    "Basic Stats" = c("Plays", "Attempts", "Completions", "Completion %", "Passing Yards", "Yards per Attempt", "Yards per Completion", "Passing Touchdowns", "Total Touchdowns", "TD %", "Passing 1st Downs", "Passing 1st Down %", "YAC per Completion", "Net Yards per Attempt", "Adjusted Yards per Attempt", "Adjusted Net Yards per Attempt", "Passer Rating", "Avg Yards to Go"),
                     "Rushing Stats" = c("EPA/Rush", "Yards per Rush", "Rushing Touchdowns", "Scramble Rate", "EPA per Scramble", "Yards per Scramble"),
-                    "Turnovers" = c("Interceptions", "Fumbles", "Fumbles Lost", "Turnovers", "INT %", "Fumble %", "Turnover %"),
-                    "Sacks" = c("Sack Rate", "Yards Lost per Sack", "Total Sacks", "Total Sack Yards Lost"),
-                    "Miscellaneous" = c("Seconds per Play", "No-Huddle Rate", "Air EPA per Play", "10+ Yard Completions", "20+ Yard Completions", "20+ Air Yard Attempts",  "Explosive Pass Rate"),
+                    "Turnovers" = c("Interceptions", "Fumbles", "Fumbles Lost", "Turnovers", "INT %", "Fumble %", "Turnover %", "EPA/Turnover", "Total Turnover EPA", "WPA/Turnover", "Total Turnover WPA", "EPA/Interception", "WPA/Interception"),
+                    "Sacks" = c("Sack Rate", "Yards Lost per Sack", "Total Sacks", "Total Sack Yards Lost", "Total Sack EPA Lost", "Total QB Hits", "QB Hit Rate"),
+                    "Miscellaneous" = c("Seconds per Play", "No-Huddle Rate", "Air EPA per Play", "10+ Yard Completions", "20+ Yard Completions", "20+ Air Yard Attempts",  "20+ Air Yard Completions", "Explosive Pass Rate", "Avg Vegas Points Favored", "Avg Vegas Pre-Game Team Total"),
                     "fOoTbAlL iSn'T pLaYeD oN sPrEaDsHeEtS" = c("Jersey Number", "Draft Pick", "Height (inches)", "BMI", "Weight", "Years of Experience", "40-yard Dash", "Vertical Jump", "Broad Jump", "20-yard Shuttle Time", "3-cone Time", "Salary APY", "Guaranteed Salary", "Guaranteed Salary %", "Last Contract Signing Year")
                   ),
                   selected = "EPA/Play"),
@@ -70,13 +73,14 @@ ui <- fluidPage(
         selectInput("x_axis",
                     "X Axis:",
                     choices = list(
-                      "Advanced Passing Stats" = c("EPA/Play", "Completion % Over Expected", "Total EPA", "Success Rate","EPA/Pass", "Expected Completion %"),
-                      "NextGenStats (no filters)" = c("Avg Time to Throw","Avg Completed Air Yards", "Avg Intended Air Yards", "Avg Air Yards Differential", "Aggressiveness", "Max Completed Air Distance", "Avg Air Yards to Sticks", "CPOE (NGS)", "Expected Completion % (NGS)"),
+                      "Advanced Passing Stats" = c("EPA/Play", "Completion % Over Expected", "Total EPA", "Success Rate","EPA/Pass", "Expected Completion %", "WPA/Play", "Total WPA"),
+                      "NextGenStats (no filters)" = c("Avg Time to Throw","Aggressiveness", "Max Completed Air Distance", "CPOE (NGS)", "Expected Completion % (NGS)"),
+                      "Air Yards (nflfastR)" = c("Avg Intended Air Yards", "Avg Completed Air Yards", "Avg Incomplete Air Yards",  "Avg Air Yards Differential", "Avg Air Yards to Sticks", "Avg Interception Air Yards"),
                       "Basic Passing Stats" = c("Attempts", "Completions", "Completion %", "Passing Yards", "Yards per Attempt", "Yards per Completion", "Passing Touchdowns", "Total Touchdowns", "TD %", "Passing 1st Downs", "Passing 1st Down %", "YAC per Completion", "Net Yards per Attempt", "Adjusted Yards per Attempt", "Adjusted Net Yards per Attempt", "Passer Rating"),
                       "Rushing Stats" = c("EPA/Rush", "Yards per Rush", "Rushing Touchdowns", "Scramble Rate", "EPA per Scramble", "Yards per Scramble"),
-                      "Turnovers" = c("Interceptions", "Fumbles", "Fumbles Lost", "Turnovers", "INT %", "Fumble %", "Turnover %"),
-                      "Sacks" = c("Sack Rate", "Yards Lost per Sack", "Total Sacks", "Total Sack Yards Lost"),
-                      "Miscellaneous" = c("Seconds per Play", "No-Huddle Rate", "Air EPA per Play", "10+ Yard Completions", "20+ Yard Completions", "20+ Air Yard Attempts",  "Explosive Pass Rate"),
+                      "Turnovers" = c("Interceptions", "Fumbles", "Fumbles Lost", "Turnovers", "INT %", "Fumble %", "Turnover %", "EPA/Turnover", "Total Turnover EPA", "WPA/Turnover", "Total Turnover WPA"),
+                      "Sacks" = c("Sack Rate", "Yards Lost per Sack", "Total Sacks", "Total Sack Yards Lost", "Total Sack EPA Lost", "Total QB Hits", "QB Hit Rate"),
+                      "Miscellaneous" = c("Seconds per Play",  "No-Huddle Rate", "Air EPA per Play", "10+ Yard Completions", "20+ Yard Completions", "20+ Air Yard Attempts",  "Explosive Pass Rate", "Avg Vegas Points Favored", "Avg Vegas Pre-Game Total"),
                       "fOoTbAlL iSn'T pLaYeD oN sPrEaDsHeEtS" = c("Jersey Number", "Draft Pick", "Height (inches)", "BMI", "Weight", "Years of Experience", "40-yard Dash", "Vertical Jump", "Broad Jump", "20-yard Shuttle Time", "3-cone Time", "Salary APY", "Guaranteed Salary", "Guaranteed Salary %", "Last Contract Signing Year")
                     ),
                     selected = "Completion % Over Expected")),
@@ -84,19 +88,19 @@ ui <- fluidPage(
       sliderInput("week_range",
                   "Week Range:",
                   min = 1, max = max(data$week),
-                  value = c(1, max(data$week)),
+                  value = c(1, 18),
                   step = 1,
                   sep = ""),
       conditionalPanel(
         condition = "(input.plot_type == 'Bar Graph' || input.plot_type == 'Scatter Plot' || input.plot_type == 'Weekly Line Graph')",
-         numericInput("min_attempts",
-                   "Minimum QB Plays:",
-                   value = max(data$week)*15, min = 1)),
+        numericInput("min_attempts",
+                     "Minimum QB Plays:",
+                     value = max(data$week)*15, min = 1)),
       conditionalPanel(
         condition = "(input.plot_type == 'Bar Graph' || input.plot_type == 'Scatter Plot')",
-      checkboxInput("lock_attempts",
-                    "Lock Minimum QB Plays?",
-                    value = FALSE)),
+        checkboxInput("lock_attempts",
+                      "Lock Minimum QB Plays?",
+                      value = FALSE)),
       checkboxGroupInput("down",
                          "Downs:",
                          choices = c("1", "2", "3", "4"),
@@ -112,19 +116,19 @@ ui <- fluidPage(
                    choices = c("Both", "Home", "Away"),
                    selected = "Both",
                    inline = TRUE),
-  #    checkboxInput("no_huddle",
-   #                 "No Huddle ONLY",
-    #                value = FALSE),
-  radioButtons("redzone",
-               "Redzone:",
-               choices = c("Include", "Exclude", "ONLY"),
-               selected = "Include",
-               inline = TRUE),
-  radioButtons("garbage",
-               "Garbage Time (<10% or >90% Win Probability):",
-               choices = c("Include", "Exclude", "ONLY"),
-               selected = "Include",
-               inline = TRUE),
+      #    checkboxInput("no_huddle",
+      #                 "No Huddle ONLY",
+      #                value = FALSE),
+      radioButtons("redzone",
+                   "Redzone:",
+                   choices = c("Include", "Exclude", "ONLY"),
+                   selected = "Include",
+                   inline = TRUE),
+      radioButtons("garbage",
+                   "Garbage Time (<10% or >90% Win Probability):",
+                   choices = c("Include", "Exclude", "ONLY"),
+                   selected = "Include",
+                   inline = TRUE),
       selectInput("qb_highlight", "Highlight QB's:", choices = c(), multiple = TRUE),
       textInput("title", "Custom Plot Title:"),
       checkboxInput("team_logos", "Display Team Logos? (~15s)", FALSE),
@@ -136,17 +140,18 @@ ui <- fluidPage(
         checkboxInput("bar_values_checkbox", "Display Values?", TRUE)),
       conditionalPanel(
         condition = "!(input.plot_type == 'Weekly Line Graph')",
-      checkboxInput("avg_line_checkbox", "Display Average Lines?", TRUE)),
-      downloadButton('downloadPlot', 'Download Plot'),
+        checkboxInput("avg_line_checkbox", "Display Average Lines?", TRUE)),
+      downloadButton('downloadPlot', 'Download Graph'),
       
     ),
     
     mainPanel(
       withSpinner(plotOutput("plot", width = "100%", height = "70vh"), 
                   type = 1, hide.ui = FALSE, size = 1, color = "grey")
-
+      
       
     )))
+
 
 
 ################################################################################
@@ -167,53 +172,57 @@ server <- function(input, output, session) {
       updateSelectInput(session, "y_axis",
                         label = "Y Axis:",
                         choices = list(
-                          "Advanced Passing Stats" = c("EPA/Play", "Completion % Over Expected", "Total EPA", "Success Rate","EPA/Pass", "Expected Completion %"),
+                          "Advanced Passing Stats" = c("EPA/Play", "Completion % Over Expected", "Total EPA", "Success Rate","EPA/Pass", "Expected Completion %", "WPA/Play", "Total WPA"),
+                          "Air Yards (nflfastR)" = c("Avg Intended Air Yards", "Avg Completed Air Yards", "Avg Incomplete Air Yards",  "Avg Air Yards Differential", "Avg Air Yards to Sticks", "Avg Interception Air Yards"),
                           "Basic Passing Stats" = c("Attempts", "Completions", "Completion %", "Passing Yards", "Yards per Attempt", "Yards per Completion", "Passing Touchdowns", "Total Touchdowns", "TD %", "Passing 1st Downs", "Passing 1st Down %", "YAC per Completion", "Net Yards per Attempt", "Adjusted Yards per Attempt", "Adjusted Net Yards per Attempt", "Passer Rating"),
                           "Rushing Stats" = c("EPA/Rush", "Yards per Rush", "Rushing Touchdowns", "Scramble Rate", "EPA per Scramble", "Yards per Scramble"),
-                          "Turnovers" = c("Interceptions", "Fumbles", "Fumbles Lost", "Turnovers", "INT %", "Fumble %", "Turnover %"),
-                          "Sacks" = c("Sack Rate", "Yards Lost per Sack", "Total Sacks", "Total Sack Yards Lost"),
-                          "Miscellaneous" = c("Seconds per Play", "No-Huddle Rate", "Air EPA per Play", "10+ Yard Completions", "20+ Yard Completions", "20+ Air Yard Attempts",  "Explosive Pass Rate"),
+                          "Turnovers" = c("Interceptions", "Fumbles", "Fumbles Lost", "Turnovers", "INT %", "Fumble %", "Turnover %", "EPA/Turnover", "Total Turnover EPA", "WPA/Turnover", "Total Turnover WPA"),
+                          "Sacks" = c("Sack Rate", "Yards Lost per Sack", "Total Sacks", "Total Sack Yards Lost", "Total Sack EPA Lost", "Total QB Hits", "QB Hit Rate"),
+                          "Miscellaneous" = c("Seconds per Play", "No-Huddle Rate", "Air EPA per Play", "10+ Yard Completions", "20+ Yard Completions", "20+ Air Yard Attempts",  "Explosive Pass Rate", "Avg Vegas Points Favored", "Avg Vegas Pre-Game Total"),
                           "fOoTbAlL iSn'T pLaYeD oN sPrEaDsHeEtS" = c("Jersey Number", "Draft Pick", "Height (inches)", "BMI", "Weight", "Years of Experience", "40-yard Dash", "Vertical Jump", "Broad Jump", "20-yard Shuttle Time", "3-cone Time", "Salary APY", "Guaranteed Salary", "Guaranteed Salary %", "Last Contract Signing Year")
                         ),
-                        selected = ifelse(input$y_axis %in% c("Avg Time to Throw","Avg Completed Air Yards", "Avg Intended Air Yards", "Avg Air Yards Differential", "Aggressiveness", "Max Completed Air Distance", "Avg Air Yards to Sticks", "CPOE (NGS)", "Expected Completion % (NGS)"), "EPA/Play", input$y_axis)
+                        selected = ifelse(input$y_axis %in% c("Avg Time to Throw","Aggressiveness", "Max Completed Air Distance", "CPOE (NGS)", "Expected Completion % (NGS)"), "EPA/Play", input$y_axis)
       )
       updateSelectInput(session, "x_axis",
                         label = "X Axis:",
                         choices = list(
-                          "Advanced Passing Stats" = c("EPA/Play", "Completion % Over Expected", "Total EPA", "Success Rate","EPA/Pass", "Expected Completion %"),
+                          "Advanced Passing Stats" = c("EPA/Play", "Completion % Over Expected", "Total EPA", "Success Rate","EPA/Pass", "Expected Completion %", "WPA/Play", "Total WPA"),
+                          "Air Yards (nflfastR)" = c("Avg Intended Air Yards", "Avg Completed Air Yards", "Avg Incomplete Air Yards",  "Avg Air Yards Differential", "Avg Air Yards to Sticks", "Avg Interception Air Yards"),
                           "Basic Passing Stats" = c("Attempts", "Completions", "Completion %", "Passing Yards", "Yards per Attempt", "Yards per Completion", "Passing Touchdowns", "Total Touchdowns", "TD %", "Passing 1st Downs", "Passing 1st Down %", "YAC per Completion", "Net Yards per Attempt", "Adjusted Yards per Attempt", "Adjusted Net Yards per Attempt", "Passer Rating"),
                           "Rushing Stats" = c("EPA/Rush", "Yards per Rush", "Rushing Touchdowns", "Scramble Rate", "EPA per Scramble", "Yards per Scramble"),
-                          "Turnovers" = c("Interceptions", "Fumbles", "Fumbles Lost", "Turnovers", "INT %", "Fumble %", "Turnover %"),
-                          "Sacks" = c("Sack Rate", "Yards Lost per Sack", "Total Sacks", "Total Sack Yards Lost"),
-                          "Miscellaneous" = c("Seconds per Play", "No-Huddle Rate", "Air EPA per Play", "10+ Yard Completions", "20+ Yard Completions", "20+ Air Yard Attempts",  "Explosive Pass Rate"),
+                          "Turnovers" = c("Interceptions", "Fumbles", "Fumbles Lost", "Turnovers", "INT %", "Fumble %", "Turnover %", "EPA/Turnover", "Total Turnover EPA", "WPA/Turnover", "Total Turnover WPA"),
+                          "Sacks" = c("Sack Rate", "Yards Lost per Sack", "Total Sacks", "Total Sack Yards Lost", "Total Sack EPA Lost", "Total QB Hits", "QB Hit Rate"),
+                          "Miscellaneous" = c("Seconds per Play", "No-Huddle Rate", "Air EPA per Play", "10+ Yard Completions", "20+ Yard Completions", "20+ Air Yard Attempts",  "Explosive Pass Rate", "Avg Vegas Points Favored", "Avg Vegas Pre-Game Total"),
                           "fOoTbAlL iSn'T pLaYeD oN sPrEaDsHeEtS" = c("Jersey Number", "Draft Pick", "Height (inches)", "BMI", "Weight", "Years of Experience", "40-yard Dash", "Vertical Jump", "Broad Jump", "20-yard Shuttle Time", "3-cone Time", "Salary APY", "Guaranteed Salary", "Guaranteed Salary %", "Last Contract Signing Year")
                         ),
-                        selected = ifelse(input$x_axis %in% c("Avg Time to Throw","Avg Completed Air Yards", "Avg Intended Air Yards", "Avg Air Yards Differential", "Aggressiveness", "Max Completed Air Distance", "Avg Air Yards to Sticks", "CPOE (NGS)", "Expected Completion % (NGS)"), "Completion % Over Expected", input$x_axis)
+                        selected = ifelse(input$x_axis %in% c("Avg Time to Throw","Aggressiveness", "Max Completed Air Distance", "CPOE (NGS)", "Expected Completion % (NGS)"), "Completion % Over Expected", input$x_axis)
       )
     } else {
       updateSelectInput(session, "y_axis",
                         label = "Y Axis:",
                         choices = list(
-                          "Advanced Passing Stats" = c("EPA/Play", "Completion % Over Expected", "Total EPA", "Success Rate","EPA/Pass", "Expected Completion %"),
-                          "NextGenStats (no filters)" = c("Avg Time to Throw","Avg Completed Air Yards", "Avg Intended Air Yards", "Avg Air Yards Differential", "Aggressiveness", "Max Completed Air Distance", "Avg Air Yards to Sticks", "CPOE (NGS)", "Expected Completion % (NGS)"),
+                          "Advanced Passing Stats" = c("EPA/Play", "Completion % Over Expected", "Total EPA", "Success Rate","EPA/Pass", "Expected Completion %", "WPA/Play", "Total WPA"),
+                          "NextGenStats (no filters)" = c("Avg Time to Throw","Aggressiveness", "Max Completed Air Distance", "CPOE (NGS)", "Expected Completion % (NGS)"),
+                          "Air Yards (nflfastR)" = c("Avg Intended Air Yards", "Avg Completed Air Yards", "Avg Incomplete Air Yards",  "Avg Air Yards Differential", "Avg Air Yards to Sticks", "Avg Interception Air Yards"),
                           "Basic Passing Stats" = c("Attempts", "Completions", "Completion %", "Passing Yards", "Yards per Attempt", "Yards per Completion", "Passing Touchdowns", "Total Touchdowns", "TD %", "Passing 1st Downs", "Passing 1st Down %", "YAC per Completion", "Net Yards per Attempt", "Adjusted Yards per Attempt", "Adjusted Net Yards per Attempt", "Passer Rating"),
                           "Rushing Stats" = c("EPA/Rush", "Yards per Rush", "Rushing Touchdowns", "Scramble Rate", "EPA per Scramble", "Yards per Scramble"),
-                          "Turnovers" = c("Interceptions", "Fumbles", "Fumbles Lost", "Turnovers", "INT %", "Fumble %", "Turnover %"),
-                          "Sacks" = c("Sack Rate", "Yards Lost per Sack", "Total Sacks", "Total Sack Yards Lost"),
-                          "Miscellaneous" = c("Seconds per Play", "No-Huddle Rate", "Air EPA per Play", "10+ Yard Completions", "20+ Yard Completions", "20+ Air Yard Attempts",  "Explosive Pass Rate"),
+                          "Turnovers" = c("Interceptions", "Fumbles", "Fumbles Lost", "Turnovers", "INT %", "Fumble %", "Turnover %", "EPA/Turnover", "Total Turnover EPA", "WPA/Turnover", "Total Turnover WPA"),
+                          "Sacks" = c("Sack Rate", "Yards Lost per Sack", "Total Sacks", "Total Sack Yards Lost", "Total Sack EPA Lost", "Total QB Hits", "QB Hit Rate"),
+                          "Miscellaneous" = c("Seconds per Play", "No-Huddle Rate", "Air EPA per Play", "10+ Yard Completions", "20+ Yard Completions", "20+ Air Yard Attempts",  "Explosive Pass Rate", "Avg Vegas Points Favored", "Avg Vegas Pre-Game Total"),
                           "fOoTbAlL iSn'T pLaYeD oN sPrEaDsHeEtS" = c("Jersey Number", "Draft Pick", "Height (inches)", "BMI", "Weight", "Years of Experience", "40-yard Dash", "Vertical Jump", "Broad Jump", "20-yard Shuttle Time", "3-cone Time", "Salary APY", "Guaranteed Salary", "Guaranteed Salary %", "Last Contract Signing Year")
                         ),
                         selected = input$y_axis)
       updateSelectInput(session, "x_axis",
                         label = "X Axis:",
                         choices = list(
-                          "Advanced Passing Stats" = c("EPA/Play", "Completion % Over Expected", "Total EPA", "Success Rate","EPA/Pass", "Expected Completion %"),
-                          "NextGenStats (no filters)" = c("Avg Time to Throw","Avg Completed Air Yards", "Avg Intended Air Yards", "Avg Air Yards Differential", "Aggressiveness", "Max Completed Air Distance", "Avg Air Yards to Sticks", "CPOE (NGS)", "Expected Completion % (NGS)"),
+                          "Advanced Passing Stats" = c("EPA/Play", "Completion % Over Expected", "Total EPA", "Success Rate","EPA/Pass", "Expected Completion %", "WPA/Play", "Total WPA"),
+                          "NextGenStats (no filters)" = c("Avg Time to Throw","Aggressiveness", "Max Completed Air Distance", "CPOE (NGS)", "Expected Completion % (NGS)"),
+                          "Air Yards (nflfastR)" = c("Avg Intended Air Yards", "Avg Completed Air Yards", "Avg Incomplete Air Yards",  "Avg Air Yards Differential", "Avg Air Yards to Sticks", "Avg Interception Air Yards"),
                           "Basic Passing Stats" = c("Attempts", "Completions", "Completion %", "Passing Yards", "Yards per Attempt", "Yards per Completion", "Passing Touchdowns", "Total Touchdowns", "TD %", "Passing 1st Downs", "Passing 1st Down %", "YAC per Completion", "Net Yards per Attempt", "Adjusted Yards per Attempt", "Adjusted Net Yards per Attempt", "Passer Rating"),
                           "Rushing Stats" = c("EPA/Rush", "Yards per Rush", "Rushing Touchdowns", "Scramble Rate", "EPA per Scramble", "Yards per Scramble"),
-                          "Turnovers" = c("Interceptions", "Fumbles", "Fumbles Lost", "Turnovers", "INT %", "Fumble %", "Turnover %"),
-                          "Sacks" = c("Sack Rate", "Yards Lost per Sack", "Total Sacks", "Total Sack Yards Lost"),
-                          "Miscellaneous" = c("Seconds per Play", "No-Huddle Rate", "Air EPA per Play", "10+ Yard Completions", "20+ Yard Completions", "20+ Air Yard Attempts",  "Explosive Pass Rate"),
+                          "Turnovers" = c("Interceptions", "Fumbles", "Fumbles Lost", "Turnovers", "INT %", "Fumble %", "Turnover %", "EPA/Turnover", "Total Turnover EPA", "WPA/Turnover", "Total Turnover WPA"),
+                          "Sacks" = c("Sack Rate", "Yards Lost per Sack", "Total Sacks", "Total Sack Yards Lost", "Total Sack EPA Lost", "Total QB Hits", "QB Hit Rate"),
+                          "Miscellaneous" = c("Seconds per Play", "No-Huddle Rate", "Air EPA per Play", "10+ Yard Completions", "20+ Yard Completions", "20+ Air Yard Attempts",  "Explosive Pass Rate", "Avg Vegas Points Favored", "Avg Vegas Pre-Game Total"),
                           "fOoTbAlL iSn'T pLaYeD oN sPrEaDsHeEtS" = c("Jersey Number", "Draft Pick", "Height (inches)", "BMI", "Weight", "Years of Experience", "40-yard Dash", "Vertical Jump", "Broad Jump", "20-yard Shuttle Time", "3-cone Time", "Salary APY", "Guaranteed Salary", "Guaranteed Salary %", "Last Contract Signing Year")
                         ),
                         selected = input$x_axis)
@@ -229,17 +238,54 @@ server <- function(input, output, session) {
     }
   })
   
-  
-  observeEvent(input$week_range, {
-    new_num <- (diff(input$week_range) + 1) * 15
+
+
+  observeEvent(c(input$week_range, input$down, input$qtr, input$home, input$redzone, input$garbage), {
+    # Calculate the base number of attempts based on the selected week range
+    base_num <- (diff(input$week_range) + 1) * 15
     
+    # Initialize adjustment factor to 1 (no adjustment)
+    adjustment_factor <- 1
+    
+    # Adjust based on the number of downs selected using the given distribution
+    down_distribution <- list("1" = 0.45, "2" = 0.35, "3" = 0.25, "4" = 0.10)
+    down_factor <- sum(unlist(down_distribution[input$down])) / sum(unlist(down_distribution))
+    adjustment_factor <- adjustment_factor * down_factor
+    
+    # Adjust based on the number of quarters selected using the given distribution
+    qtr_distribution <- list("1" = 0.25, "2" = 0.30, "3" = 0.25, "4" = 0.30, "OT" = 0.02)
+    qtr_factor <- sum(unlist(qtr_distribution[input$qtr])) / sum(unlist(qtr_distribution))
+    adjustment_factor <- adjustment_factor * qtr_factor
+    
+    # Adjust based on the home/away selection using the given distribution
+    home_distribution <- list("Both" = 1, "Home" = 0.50, "Away" = 0.50)
+    home_factor <- home_distribution[[input$home]]
+    adjustment_factor <- adjustment_factor * home_factor
+    
+    # Adjust based on garbage time filter using the given distribution
+    garbage_distribution <- list("Include" = 1, "Exclude" = 0.80, "ONLY" = 0.25)
+    garbage_factor <- garbage_distribution[[input$garbage]]
+    adjustment_factor <- adjustment_factor * garbage_factor
+    
+    # Adjust based on redzone filter using the given distribution
+    redzone_distribution <- list("Include" = 1, "Exclude" = 0.85, "ONLY" = 0.15)
+    redzone_factor <- redzone_distribution[[input$redzone]]
+    adjustment_factor <- adjustment_factor * redzone_factor
+    
+    # Calculate the new minimum attempts
+    new_num <- base_num * adjustment_factor
+    
+    # Round down to the nearest multiple of 5
+    new_num <- floor(new_num / 5) * 5
+    
+    # Check if the min_attempts input is null, NA, or empty
     if (is.null(input$min_attempts) || is.na(input$min_attempts) || nchar(input$min_attempts) == 0) {
-      new_min_attempts <- max(data$week * 15)
+      new_min_attempts <- max(data$week) * 15
       updateNumericInput(session, "min_attempts", value = new_min_attempts)
     }
     
+    # If attempts are not locked, update the min_attempts input dynamically
     if (!input$lock_attempts) {
-      new_num <- (diff(input$week_range) + 1) * 15
       if (input$plot_type == "Weekly Line Graph") {
         new_min_attempts <- 1
         updateNumericInput(session, "min_attempts", value = new_min_attempts)
@@ -247,20 +293,19 @@ server <- function(input, output, session) {
         updateNumericInput(session, "min_attempts", value = new_num)
       }
     }
-    
-  }) 
-    #debounce(500)  # Delay the update by 500 milliseconds (0.5 seconds)
+  })
+  
   
   
   
   x_axis_plot <- reactive({
     if("Avg Time to Throw" %in% input$x_axis) return(ngs_range()$avg_time_to_throw)
-    if("Avg Completed Air Yards" %in% input$x_axis) return(ngs_range()$avg_completed_air_yards)
-    if("Avg Intended Air Yards" %in% input$x_axis) return(ngs_range()$avg_intended_air_yards)
-    if("Avg Air Yards Differential" %in% input$x_axis) return(ngs_range()$avg_air_yards_differential)
+    if("Avg Completed Air Yards" %in% input$x_axis) return(ngs_range()$completed_air_yards)
+    if("Avg Intended Air Yards" %in% input$x_axis) return(ngs_range()$intended_air_yards)
+    if("Avg Air Yards Differential" %in% input$x_axis) return(ngs_range()$air_yards_differential)
     if("Aggressiveness" %in% input$x_axis) return(ngs_range()$aggressiveness)
     if("Max Completed Air Distance" %in% input$x_axis) return(ngs_range()$max_completed_air_distance)
-    if("Avg Air Yards to Sticks" %in% input$x_axis) return(ngs_range()$avg_air_yards_to_sticks)
+    if("Avg Air Yards to Sticks" %in% input$x_axis) return(ngs_range()$air_yards_sticks)
     if("Attempts" %in% input$x_axis) return(ngs_range()$attempts)
     if("Passing Yards" %in% input$x_axis) return(ngs_range()$pass_yards)
     if("Passing Touchdowns" %in% input$x_axis) return(ngs_range()$pass_touchdowns)
@@ -296,6 +341,7 @@ server <- function(input, output, session) {
     if("Adjusted Net Yards per Attempt" %in% input$x_axis) return(ngs_range()$any_a)
     if("Total Sacks" %in% input$x_axis) return(ngs_range()$tot_sacks)
     if("Total Sack Yards Lost" %in% input$x_axis) return(ngs_range()$tot_sack_yards)
+    if("Total Sack EPA Lost" %in% input$x_axis) return(ngs_range()$tot_sack_epa)
     if("Yards Lost per Sack" %in% input$x_axis) return(ngs_range()$yards_sack)
     if("10+ Yard Completions" %in% input$x_axis) return(ngs_range()$ten_yard_completions)
     if("20+ Yard Completions" %in% input$x_axis) return(ngs_range()$twenty_yard_completions)
@@ -316,7 +362,6 @@ server <- function(input, output, session) {
     if("Seconds per Play" %in% input$x_axis) return(ngs_range()$seconds_play)
     if("Weight" %in% input$x_axis) return(ngs_range()$weight)
     if("BMI" %in% input$x_axis) return(ngs_range()$bmi)
-   # if("Zodiac Sign" %in% input$x_axis) return(ngs_range()$star_sign)
     if("Years of Experience" %in% input$x_axis) return(ngs_range()$years_of_experience)
     if("40-yard Dash" %in% input$x_axis) return(ngs_range()$forty)
     if("Vertical Jump" %in% input$x_axis) return(ngs_range()$vertical)
@@ -327,18 +372,39 @@ server <- function(input, output, session) {
     if("Guaranteed Salary" %in% input$x_axis) return(ngs_range()$guaranteed)
     if("Guaranteed Salary %" %in% input$x_axis) return(ngs_range()$guarantee_pct)
     if("Last Contract Signing Year" %in% input$x_axis) return(ngs_range()$year_signed)
+     if("WPA/Play" %in% input$x_axis) return(ngs_range()$avg_win_prob_added)
+     if("Total WPA" %in% input$x_axis) return(ngs_range()$tot_win_prob_added)
+     if("Avg Incomplete Air Yards" %in% input$x_axis) return(ngs_range()$incomplete_air_yards)
+     if("Avg Interception Air Yards" %in% input$x_axis) return(ngs_range()$interception_air_yards)
+     if("EPA/Turnover" %in% input$x_axis) return(ngs_range()$avg_turnover_epa)
+     if("Total Turnover EPA" %in% input$x_axis) return(ngs_range()$tot_turnover_epa)
+     if("WPA/Turnover" %in% input$x_axis) return(ngs_range()$avg_turnover_wpa)
+     if("Total Turnover WPA" %in% input$x_axis) return(ngs_range()$tot_turnover_wpa)
+     if("Total QB Hits" %in% input$x_axis) return(ngs_range()$qb_hits)
+     if("QB Hit Rate" %in% input$x_axis) return(ngs_range()$qb_hit_rate)
+     if("Avg Vegas Points Favored" %in% input$x_axis) return(ngs_range()$avg_points_favored)
+     if("Avg Vegas Pre-Game Total" %in% input$x_axis) return(ngs_range()$avg_total)
+     if("Plays" %in% input$x_axis) return(ngs_range()$plays)
+     if("Avg Yards to Go" %in% input$x_axis) return(ngs_range()$avg_ydstogo)
+     if("Air Yards Past Sticks %" %in% input$x_axis) return(ngs_range()$air_past_sticks_pct)
+     if("20+ Air Yard Completions" %in% input$x_axis) return(ngs_range()$twenty_air_completions)
+     if("Avg Vegas Pre-Game Team Total" %in% input$x_axis) return(ngs_range()$avg_team_total)
+     if("EPA/Interception" %in% input$x_axis) return(ngs_range()$epa_int)
+     if("WPA/Interception" %in% input$x_axis) return(ngs_range()$wpa_int)
+    
+    
     
   })
   
   
   y_axis_plot <- reactive({
     if("Avg Time to Throw" %in% input$y_axis) return(ngs_range()$avg_time_to_throw)
-    if("Avg Completed Air Yards" %in% input$y_axis) return(ngs_range()$avg_completed_air_yards)
-    if("Avg Intended Air Yards" %in% input$y_axis) return(ngs_range()$avg_intended_air_yards)
-    if("Avg Air Yards Differential" %in% input$y_axis) return(ngs_range()$avg_air_yards_differential)
+    if("Avg Completed Air Yards" %in% input$y_axis) return(ngs_range()$completed_air_yards)
+    if("Avg Intended Air Yards" %in% input$y_axis) return(ngs_range()$intended_air_yards)
+    if("Avg Air Yards Differential" %in% input$y_axis) return(ngs_range()$air_yards_differential)
     if("Aggressiveness" %in% input$y_axis) return(ngs_range()$aggressiveness)
     if("Max Completed Air Distance" %in% input$y_axis) return(ngs_range()$max_completed_air_distance)
-    if("Avg Air Yards to Sticks" %in% input$y_axis) return(ngs_range()$avg_air_yards_to_sticks)
+    if("Avg Air Yards to Sticks" %in% input$y_axis) return(ngs_range()$air_yards_sticks)
     if("Attempts" %in% input$y_axis) return(ngs_range()$attempts)
     if("Passing Yards" %in% input$y_axis) return(ngs_range()$pass_yards)
     if("Passing Touchdowns" %in% input$y_axis) return(ngs_range()$pass_touchdowns)
@@ -374,6 +440,7 @@ server <- function(input, output, session) {
     if("Adjusted Net Yards per Attempt" %in% input$y_axis) return(ngs_range()$any_a)
     if("Total Sacks" %in% input$y_axis) return(ngs_range()$tot_sacks)
     if("Total Sack Yards Lost" %in% input$y_axis) return(ngs_range()$tot_sack_yards)
+    if("Total Sack EPA Lost" %in% input$y_axis) return(ngs_range()$tot_sack_epa)
     if("Yards Lost per Sack" %in% input$y_axis) return(ngs_range()$yards_sack)
     if("10+ Yard Completions" %in% input$y_axis) return(ngs_range()$ten_yard_completions)
     if("20+ Yard Completions" %in% input$y_axis) return(ngs_range()$twenty_yard_completions)
@@ -394,7 +461,6 @@ server <- function(input, output, session) {
     if("Seconds per Play" %in% input$y_axis) return(ngs_range()$seconds_play)
     if("Weight" %in% input$y_axis) return(ngs_range()$weight)
     if("BMI" %in% input$y_axis) return(ngs_range()$bmi)
-  #  if("Zodiac Sign" %in% input$y_axis) return(ngs_range()$star_sign)
     if("Years of Experience" %in% input$y_axis) return(ngs_range()$years_of_experience)
     if("40-yard Dash" %in% input$y_axis) return(ngs_range()$forty)
     if("Vertical Jump" %in% input$y_axis) return(ngs_range()$vertical)
@@ -405,6 +471,25 @@ server <- function(input, output, session) {
     if("Guaranteed Salary" %in% input$y_axis) return(ngs_range()$guaranteed)
     if("Guaranteed Salary %" %in% input$y_axis) return(ngs_range()$guarantee_pct)
     if("Last Contract Signing Year" %in% input$y_axis) return(ngs_range()$year_signed)
+     if("WPA/Play" %in% input$y_axis) return(ngs_range()$avg_win_prob_added)
+     if("Total WPA" %in% input$y_axis) return(ngs_range()$tot_win_prob_added)
+     if("Avg Incomplete Air Yards" %in% input$y_axis) return(ngs_range()$incomplete_air_yards)
+     if("Avg Interception Air Yards" %in% input$y_axis) return(ngs_range()$interception_air_yards)
+     if("EPA/Turnover" %in% input$y_axis) return(ngs_range()$avg_turnover_epa)
+     if("Total Turnover EPA" %in% input$y_axis) return(ngs_range()$tot_turnover_epa)
+     if("WPA/Turnover" %in% input$y_axis) return(ngs_range()$avg_turnover_wpa)
+     if("Total Turnover WPA" %in% input$y_axis) return(ngs_range()$tot_turnover_wpa)
+     if("Total QB Hits" %in% input$y_axis) return(ngs_range()$qb_hits)
+     if("QB Hit Rate" %in% input$y_axis) return(ngs_range()$qb_hit_rate)
+     if("Avg Vegas Points Favored" %in% input$y_axis) return(ngs_range()$avg_points_favored)
+     if("Avg Vegas Pre-Game Total" %in% input$y_axis) return(ngs_range()$avg_total)
+     if("Plays" %in% input$y_axis) return(ngs_range()$plays)
+     if("Avg Yards to Go" %in% input$y_axis) return(ngs_range()$avg_ydstogo)
+     if("Air Yards Past Sticks %" %in% input$y_axis) return(ngs_range()$air_past_sticks_pct)
+     if("20+ Air Yard Completions" %in% input$y_axis) return(ngs_range()$twenty_air_completions)
+     if("Avg Vegas Pre-Game Team Total" %in% input$y_axis) return(ngs_range()$avg_team_total)
+     if("EPA/Interception" %in% input$y_axis) return(ngs_range()$epa_int)
+     if("WPA/Interception" %in% input$y_axis) return(ngs_range()$wpa_int)
   })
   
   
@@ -415,7 +500,7 @@ server <- function(input, output, session) {
     if("Avg Air Yards Differential" %in% input$y_axis) return(ngs_range_weekly()$avg_air_yards_differential)
     if("Aggressiveness" %in% input$y_axis) return(ngs_range_weekly()$aggressiveness)
     if("Max Completed Air Distance" %in% input$y_axis) return(ngs_range_weekly()$max_completed_air_distance)
-    if("Avg Air Yards to Sticks" %in% input$y_axis) return(ngs_range_weekly()$avg_air_yards_to_sticks)
+    if("Avg Air Yards to Sticks" %in% input$y_axis) return(ngs_range_weekly()$air_yards_sticks)
     if("Attempts" %in% input$y_axis) return(ngs_range_weekly()$attempts)
     if("Passing Yards" %in% input$y_axis) return(ngs_range_weekly()$pass_yards)
     if("Passing Touchdowns" %in% input$y_axis) return(ngs_range_weekly()$pass_touchdowns)
@@ -451,6 +536,7 @@ server <- function(input, output, session) {
     if("Adjusted Net Yards per Attempt" %in% input$y_axis) return(ngs_range_weekly()$any_a)
     if("Total Sacks" %in% input$y_axis) return(ngs_range_weekly()$tot_sacks)
     if("Total Sack Yards Lost" %in% input$y_axis) return(ngs_range_weekly()$tot_sack_yards)
+    if("Total Sack EPA Lost" %in% input$y_axis) return(ngs_range()$tot_sack_epa)
     if("Yards Lost per Sack" %in% input$y_axis) return(ngs_range_weekly()$yards_sack)
     if("10+ Yard Completions" %in% input$y_axis) return(ngs_range_weekly()$ten_yard_completions)
     if("20+ Yard Completions" %in% input$y_axis) return(ngs_range_weekly()$twenty_yard_completions)
@@ -469,17 +555,36 @@ server <- function(input, output, session) {
     if("Turnover %" %in% input$y_axis) return(ngs_range_weekly()$turnover_percent)
     if("Yards per Rush" %in% input$y_axis) return(ngs_range_weekly()$yards_rush)
     if("Seconds per Play" %in% input$y_axis) return(ngs_range_weekly()$seconds_play)
+     if("WPA/Play" %in% input$y_axis) return(ngs_range()$avg_win_prob_added)
+     if("Total WPA" %in% input$y_axis) return(ngs_range()$tot_win_prob_added)
+     if("Avg Incomplete Air Yards" %in% input$y_axis) return(ngs_range()$incomplete_air_yards)
+     if("Avg Interception Air Yards" %in% input$y_axis) return(ngs_range()$interception_air_yards)
+     if("EPA/Turnover" %in% input$y_axis) return(ngs_range()$avg_turnover_epa)
+     if("Total Turnover EPA" %in% input$y_axis) return(ngs_range()$tot_turnover_epa)
+     if("WPA/Turnover" %in% input$y_axis) return(ngs_range()$avg_turnover_wpa)
+     if("Total Turnover WPA" %in% input$y_axis) return(ngs_range()$tot_turnover_wpa)
+     if("Total QB Hits" %in% input$y_axis) return(ngs_range()$qb_hits)
+     if("QB Hit Rate" %in% input$y_axis) return(ngs_range()$qb_hit_rate)
+     if("Avg Vegas Points Favored" %in% input$y_axis) return(ngs_range()$avg_points_favored)
+     if("Avg Vegas Pre-Game Total" %in% input$y_axis) return(ngs_range()$avg_total)
+     if("Plays" %in% input$y_axis) return(ngs_range()$plays)
+     if("Avg Yards to Go" %in% input$y_axis) return(ngs_range()$avg_ydstogo)
+     if("Air Yards Past Sticks %" %in% input$y_axis) return(ngs_range()$air_past_sticks_pct)
+     if("20+ Air Yard Completions" %in% input$y_axis) return(ngs_range()$twenty_air_completions)
+     if("Avg Vegas Pre-Game Team Total" %in% input$y_axis) return(ngs_range()$avg_team_total)
+     if("EPA/Interception" %in% input$y_axis) return(ngs_range()$epa_int)
+     if("WPA/Interception" %in% input$y_axis) return(ngs_range()$wpa_int)
   })
   
   original_col <- reactive({
     switch(input$y_axis,
            "Avg Time to Throw" = "avg_time_to_throw",
-           "Avg Completed Air Yards" = "avg_completed_air_yards",
-           "Avg Intended Air Yards" = "avg_intended_air_yards",
-           "Avg Air Yards Differential" = "avg_air_yards_differential",
+           "Avg Completed Air Yards" = "completed_air_yards",
+           "Avg Intended Air Yards" = "intended_air_yards",
+           "Avg Air Yards Differential" = "air_yards_differential",
            "Aggressiveness" = "aggressiveness",
            "Max Completed Air Distance" = "max_completed_air_distance",
-           "Avg Air Yards to Sticks" = "avg_air_yards_to_sticks",
+           "Avg Air Yards to Sticks" = "air_yards_sticks",
            "Attempts" = "attempts",
            "Passing Yards" = "pass_yards",
            "Passing Touchdowns" = "pass_touchdowns",
@@ -515,6 +620,7 @@ server <- function(input, output, session) {
            "Adjusted Net Yards per Attempt" = "any_a",
            "Total Sacks" = "tot_sacks",
            "Total Sack Yards Lost" = "tot_sack_yards",
+           "Total Sack EPA Lost" = "tot_sack_epa",
            "Yards Lost per Sack" = "yards_sack",
            "10+ Yard Completions" = "ten_yard_completions",
            "20+ Yard Completions" = "twenty_yard_completions",
@@ -535,7 +641,6 @@ server <- function(input, output, session) {
            "Seconds per Play" = "seconds_play",
            "Weight" = "weight",
            "BMI" = "bmi",
-      #     "Zodiac Sign" = "star_sign",
            "Years of Experience" = "years_of_experience",
            "40-yard Dash" = "forty",
            "Vertical Jump" = "vertical",
@@ -545,7 +650,26 @@ server <- function(input, output, session) {
            "Salary APY" = "apy",
            "Guaranteed Salary" = "guaranteed",
            "Guaranteed Salary %" = "guarantee_pct",
-           "Last Contract Signing Year" = "year_signed")
+           "Last Contract Signing Year" = "year_signed",
+           "WPA/Play" = "avg_win_prob_added",
+           "Total WPA" = "tot_win_prob_added",
+           "Avg Incomplete Air Yards" = "incomplete_air_yards",
+           "Avg Interception Air Yards" = "interception_air_yards",
+           "EPA/Turnover" = "avg_turnover_epa",
+           "Total Turnover EPA" = "tot_turnover_epa",
+           "WPA/Turnover" = "avg_turnover_wpa",
+           "Total Turnover WPA" = "tot_turnover_wpa",
+           "Total QB Hits" = "qb_hits",
+           "QB Hit Rate" = "qb_hit_rate",
+           "Avg Vegas Points Favored" = "avg_points_favored",
+           "Avg Vegas Pre-Game Total" = "avg_total",
+           "Plays" = "plays",
+           "Avg Yards to Go" = "avg_ydstogo",
+           "Air Yards Past Sticks %" = "air_past_sticks_pct",
+           "20+ Air Yard Completions" = "twenty_air_completions",
+           "Avg Vegas Pre-Game Team Total" = "avg_team_total",
+           "EPA/Interception" = "epa_int",
+           "WPA/Interception" = "wpa_int")
   })
   
   ngs_range <- reactive({
@@ -592,7 +716,6 @@ server <- function(input, output, session) {
                 jersey_number = last(jersey_number),
                 team_abbr = last(team_abbr),
                 team_color = last(team_color),
-               # team_color2 = last(team_color2),
                 plays = sum(data_attempts, na.rm = TRUE),
                 attempts = sum(attempts, na.rm = TRUE),
                 completions = sum(completions, na.rm = TRUE),
@@ -613,7 +736,7 @@ server <- function(input, output, session) {
                 cpoe = sum(cpoe, na.rm = TRUE)/sum(cp_attempts, na.rm = TRUE)/100,
                 sr = sum(success, na.rm = TRUE)/plays,
                 yac_comp = sum(yards_after_catch, na.rm = TRUE)/sum(completions, na.rm = TRUE),
-                air_epa = sum(air_epa, na.rm = TRUE)/plays,
+                air_epa = sum(air_epa, na.rm = TRUE)/sum(attempts, na.rm = TRUE),
                 no_huddle_rate = sum(no_huddle, na.rm = TRUE)/plays,
                 scramble_rate = sum(qb_scrambles, na.rm = TRUE)/plays,
                 sack_rate = sum(sacks, na.rm = TRUE)/(sum(attempts, na.rm = TRUE)+sum(sacks, na.rm = TRUE)),
@@ -627,6 +750,7 @@ server <- function(input, output, session) {
                 turnover_percent = turnovers/plays,
                 tot_sacks = sum(sacks, na.rm = TRUE),
                 tot_sack_yards = sum(tot_sack_yards, na.rm = TRUE),
+                tot_sack_epa = sum(tot_sack_epa, na.rm = TRUE),
                 tot_scramble_yards = sum(tot_scramble_yards, na.rm = TRUE),
                 tot_scramble_epa = sum(tot_scramble_epa, na.rm = TRUE),
                 yards_sack = tot_sack_yards/tot_sacks,
@@ -640,9 +764,26 @@ server <- function(input, output, session) {
                 explosive_pass_rate = twenty_yard_completions/attempts,
                 twenty_air_yard_attempts = sum(twenty_air_yard_attempts, na.rm = TRUE),
                 seconds_play = sum(att_seconds_per_play, na.rm = TRUE) / plays,
+                 intended_air_yards = sum(sum_air_yards, na.rm = T) / attempts,
+                 completed_air_yards = sum(comp_air_yards, na.rm = T) / completions,
+                 incomplete_air_yards = sum(incomp_air_yards, na.rm = T) / (attempts - completions),
+                 air_yards_differential = completed_air_yards - intended_air_yards,
+                 air_yards_sticks = sum(air_yards_to_sticks, na.rm = T) / attempts,
+                 interception_air_yards = sum(int_air_yards, na.rm = T) / interceptions,
+                 avg_win_prob_added = sum(wpa, na.rm = T) / plays,
+                 tot_win_prob_added = sum(wpa, na.rm = T),
+                 avg_turnover_epa = sum(tot_turnover_epa, na.rm = T) / turnovers,
+                 tot_turnover_epa = sum(tot_turnover_epa, na.rm = T),
+                  avg_turnover_wpa = sum(tot_turnover_wpa, na.rm = T) / turnovers,
+                  tot_turnover_wpa = sum(tot_turnover_wpa, na.rm = T),
+                 qb_hits = sum(tot_qb_hits, na.rm = T),
+                 qb_hit_rate = sum(tot_qb_hits, na.rm = T) / attempts,
+                 avg_points_favored = mean(sapply(split(points_favored, week), last), na.rm = TRUE),
+                 avg_total = mean(sapply(split(closing_total, week), last), na.rm = TRUE),
+                 avg_ydstogo = sum(dist_to_sticks, na.rm = T) / plays,
+                 
                 weight = max(weight),
                 bmi = min(bmi),
-           #   star_sign = last(as.character(star_sign)),
                 years_of_experience = mean(years_of_experience),
                 forty = last(forty),
                 vertical = last(vertical),
@@ -666,10 +807,11 @@ server <- function(input, output, session) {
                 avg_intended_air_yards = sum(att_avg_intended_air_yards, na.rm = TRUE)/sum(attempts_ngs, na.rm = TRUE),
                 avg_air_yards_differential = avg_completed_air_yards - avg_intended_air_yards,
                 aggressiveness = sum(att_aggressiveness, na.rm = TRUE)/sum(attempts_ngs, na.rm = TRUE)/100,
-                max_completed_air_distance = max(max_completed_air_distance),
+                max_completed_air_distance = ifelse(all(is.na(max_completed_air_distance)), NA, max(max_completed_air_distance, na.rm = TRUE)),
                 avg_air_yards_to_sticks = sum(att_avg_air_yards_to_sticks, na.rm = TRUE)/sum(attempts_ngs, na.rm = TRUE),
                 exp_completion_percentage = sum(att_exp_completion_percentage, na.rm = TRUE)/sum(attempts_ngs, na.rm = TRUE)/100,
-                completion_percentage_above_expectation = sum(att_completion_percentage_above_expectation, na.rm = TRUE)/sum(attempts_ngs, na.rm = TRUE)/100) %>%
+                completion_percentage_above_expectation = sum(att_completion_percentage_above_expectation, na.rm = TRUE)/sum(attempts_ngs, na.rm = TRUE)/100,
+             ) %>%
       filter(!is.na(plays) & (!is.na(input$min_attempts) & plays >= ifelse(is.null(input$min_attempts) || input$min_attempts == "", 1, input$min_attempts))) %>%
       mutate(
         percentile_rank = if (input$plot_type != "Weekly Line Graph" & any(complete.cases(.)) & any(!is.na(!!sym(original_col())))) {
@@ -706,7 +848,6 @@ server <- function(input, output, session) {
                 jersey_number = last(jersey_number),
                 team_abbr = last(team_abbr),
                 team_color = last(team_color),
-                # team_color2 = last(team_color2),
                 plays = sum(data_attempts, na.rm = TRUE),
                 attempts = sum(attempts, na.rm = TRUE),
                 completions = sum(completions, na.rm = TRUE),
@@ -741,6 +882,7 @@ server <- function(input, output, session) {
                 turnover_percent = turnovers/plays,
                 tot_sacks = sum(sacks, na.rm = TRUE),
                 tot_sack_yards = sum(tot_sack_yards, na.rm = TRUE),
+                tot_sack_epa = sum(tot_sack_epa, na.rm = TRUE),
                 tot_scramble_yards = sum(tot_scramble_yards, na.rm = TRUE),
                 tot_scramble_epa = sum(tot_scramble_epa, na.rm = TRUE),
                 yards_sack = tot_sack_yards/tot_sacks,
@@ -768,7 +910,7 @@ server <- function(input, output, session) {
                 avg_air_yards_differential = avg_completed_air_yards - avg_intended_air_yards,
                 aggressiveness = sum(att_aggressiveness, na.rm = TRUE)/sum(attempts_ngs, na.rm = TRUE)/100,
                 max_completed_air_distance = max(max_completed_air_distance),
-                avg_air_yards_to_sticks = sum(att_avg_air_yards_to_sticks, na.rm = TRUE)/sum(attempts_ngs, na.rm = TRUE),
+                air_yards_to_sticks = sum(att_avg_air_yards_to_sticks, na.rm = TRUE)/sum(attempts_ngs, na.rm = TRUE),
                 exp_completion_percentage = sum(att_exp_completion_percentage, na.rm = TRUE)/sum(attempts_ngs, na.rm = TRUE)/100,
                 completion_percentage_above_expectation = sum(att_completion_percentage_above_expectation, na.rm = TRUE)/sum(attempts_ngs, na.rm = TRUE)/100) %>%
       filter(if (is_empty(input$qb_highlight)) TRUE else Quarterback %in% input$qb_highlight)
@@ -992,7 +1134,15 @@ server <- function(input, output, session) {
   })
   
   
-  
+#  observe({
+#    showModal(modalDialog(
+#      title = "Welcome to DOUG!",
+#      "To download the graph you created, please click the 'Download Graph' button at the bottom of the sidebar.",
+#      easyClose = TRUE,
+#      footer = modalButton("Got it!")
+#    ))
+#  })
+
   
   
   output$plot <- renderPlot({
@@ -1012,7 +1162,6 @@ server <- function(input, output, session) {
       
       p <- ggplot(ngs_range(), aes(x = x_axis_plot(), y = y_axis_plot())) +
         ggtitle(ifelse(input$title != "", input$title, paste(input$y_axis, "vs.", input$x_axis)),
-                #subtitle <- paste(subtitle_line1(), "<br>", subtitle_line2, sep = "")
         )
       if (input$trendline_checkbox) {
         p <- p + geom_smooth(method = "lm", formula = 'y ~ x',se = FALSE, color = "Grey69", linetype = "solid", alpha=0.1, linewidth = 1)
@@ -1041,13 +1190,13 @@ server <- function(input, output, session) {
          
        if (input$x_axis == "Zodiac Sign") {
          p <- p + scale_x_discrete(labels = ngs_range()$star_sign) +
-           scale_y_continuous(labels = if (input$y_axis %in% c("Success Rate", "Completion % Over Expected", "Expected Completion %", "Aggressiveness", "CPOE (NGS)", "Expected Completion % (NGS)", "Completion %", "TD %", "INT %", "Passing 1st Down %", "No-Huddle Rate", "Scramble Rate", "Sack Rate", "Explosive Pass Rate", "Fumble %", "Turnover %", "Guaranteed Salary %")) scales::percent_format() else scales::number_format())
+           scale_y_continuous(labels = if (input$y_axis %in% c("Success Rate", "Completion % Over Expected", "Expected Completion %", "Aggressiveness", "CPOE (NGS)", "Expected Completion % (NGS)", "Completion %", "TD %", "INT %", "Passing 1st Down %", "No-Huddle Rate", "Scramble Rate", "Sack Rate", "Explosive Pass Rate", "Fumble %", "Turnover %", "Guaranteed Salary %", "WPA/Play", "Total WPA", "WPA/Turnover", "Total Turnover WPA", "QB Hit Rate")) scales::percent_format() else scales::number_format())
        } else if (input$y_axis == "Zodiac Sign") {
          p <- p + scale_y_discrete(labels = ngs_range()$star_sign) +
-           scale_x_continuous(labels = if (input$x_axis %in% c("Success Rate", "Completion % Over Expected", "Expected Completion %", "Aggressiveness", "CPOE (NGS)", "Expected Completion % (NGS)", "Completion %", "TD %", "INT %", "Passing 1st Down %", "No-Huddle Rate", "Scramble Rate", "Sack Rate", "Explosive Pass Rate", "Fumble %", "Turnover %", "Guaranteed Salary %")) scales::percent_format() else scales::number_format())
+           scale_x_continuous(labels = if (input$x_axis %in% c("Success Rate", "Completion % Over Expected", "Expected Completion %", "Aggressiveness", "CPOE (NGS)", "Expected Completion % (NGS)", "Completion %", "TD %", "INT %", "Passing 1st Down %", "No-Huddle Rate", "Scramble Rate", "Sack Rate", "Explosive Pass Rate", "Fumble %", "Turnover %", "Guaranteed Salary %", "WPA/Play", "Total WPA", "WPA/Turnover", "Total Turnover WPA", "QB Hit Rate")) scales::percent_format() else scales::number_format())
        } else {
-         p <- p + scale_x_continuous(labels = if (input$x_axis %in% c("Success Rate", "Completion % Over Expected", "Expected Completion %", "Aggressiveness", "CPOE (NGS)", "Expected Completion % (NGS)", "Completion %", "TD %", "INT %", "Passing 1st Down %", "No-Huddle Rate", "Scramble Rate", "Sack Rate", "Explosive Pass Rate", "Fumble %", "Turnover %", "Guaranteed Salary %")) scales::percent_format() else scales::number_format()) +
-           scale_y_continuous(labels = if (input$y_axis %in% c("Success Rate", "Completion % Over Expected", "Expected Completion %", "Aggressiveness", "CPOE (NGS)", "Expected Completion % (NGS)", "Completion %", "TD %", "INT %", "Passing 1st Down %", "No-Huddle Rate", "Scramble Rate", "Sack Rate", "Explosive Pass Rate", "Fumble %", "Turnover %", "Guaranteed Salary %")) scales::percent_format() else scales::number_format())
+         p <- p + scale_x_continuous(labels = if (input$x_axis %in% c("Success Rate", "Completion % Over Expected", "Expected Completion %", "Aggressiveness", "CPOE (NGS)", "Expected Completion % (NGS)", "Completion %", "TD %", "INT %", "Passing 1st Down %", "No-Huddle Rate", "Scramble Rate", "Sack Rate", "Explosive Pass Rate", "Fumble %", "Turnover %", "Guaranteed Salary %", "WPA/Play", "Total WPA", "WPA/Turnover", "Total Turnover WPA", "QB Hit Rate")) scales::percent_format() else scales::number_format()) +
+           scale_y_continuous(labels = if (input$y_axis %in% c("Success Rate", "Completion % Over Expected", "Expected Completion %", "Aggressiveness", "CPOE (NGS)", "Expected Completion % (NGS)", "Completion %", "TD %", "INT %", "Passing 1st Down %", "No-Huddle Rate", "Scramble Rate", "Sack Rate", "Explosive Pass Rate", "Fumble %", "Turnover %", "Guaranteed Salary %", "WPA/Play", "Total WPA", "WPA/Turnover", "Total Turnover WPA", "QB Hit Rate")) scales::percent_format() else scales::number_format())
        }
        
        
@@ -1055,10 +1204,10 @@ server <- function(input, output, session) {
         xlab(ifelse(input$x_axis == "Explosive Pass Rate", "Explosive Pass Rate (20+ Yard Completions)", input$x_axis)) +
         ylab(ifelse(input$y_axis == "Explosive Pass Rate", "Explosive Pass Rate (20+ Yard Completions)", input$y_axis)) +
         labs(
-          caption = if (input$x_axis %in% c("Avg Time to Throw","Avg Completed Air Yards", "Avg Intended Air Yards", "Avg Air Yards Differential", "Aggressiveness", "Max Completed Air Distance", "Avg Air Yards to Sticks", "CPOE (NGS)", "Expected Completion % (NGS)") |
-                        input$y_axis %in% c("Avg Time to Throw","Avg Completed Air Yards", "Avg Intended Air Yards", "Avg Air Yards Differential", "Aggressiveness", "Max Completed Air Distance", "Avg Air Yards to Sticks", "CPOE (NGS)", "Expected Completion % (NGS)")) {
-            if (input$x_axis %in% c("Avg Time to Throw","Avg Completed Air Yards", "Avg Intended Air Yards", "Avg Air Yards Differential", "Aggressiveness", "Max Completed Air Distance", "Avg Air Yards to Sticks", "CPOE (NGS)", "Expected Completion % (NGS)") &
-                input$y_axis %in% c("Avg Time to Throw","Avg Completed Air Yards", "Avg Intended Air Yards", "Avg Air Yards Differential", "Aggressiveness", "Max Completed Air Distance", "Avg Air Yards to Sticks", "CPOE (NGS)", "Expected Completion % (NGS)")) {
+          caption = if (input$x_axis %in% c("Avg Time to Throw","Aggressiveness", "Max Completed Air Distance", "CPOE (NGS)", "Expected Completion % (NGS)") |
+                        input$y_axis %in% c("Avg Time to Throw","Aggressiveness", "Max Completed Air Distance", "CPOE (NGS)", "Expected Completion % (NGS)")) {
+            if (input$x_axis %in% c("Avg Time to Throw","Aggressiveness", "Max Completed Air Distance", "CPOE (NGS)", "Expected Completion % (NGS)") &
+                input$y_axis %in% c("Avg Time to Throw","Aggressiveness", "Max Completed Air Distance", "CPOE (NGS)", "Expected Completion % (NGS)")) {
               "Plot: @Doug_Analytics | Data: NGS"
             } else {
               "Plot: @Doug_Analytics | Data: NGS, nflfastR"
@@ -1067,7 +1216,7 @@ server <- function(input, output, session) {
             "Plot: @Doug_Analytics | Data: nflfastR"
           },
           subtitle = paste("Season: ", 
-                           paste("<span style='color:royalblue3; font-weight:bold'>", "2023", "</span>"), 
+                           paste("<span style='color:royalblue3; font-weight:bold'>", season, "</span>"), 
                            "  |  ", 
                            ifelse(input$week_range[1] == input$week_range[2],
                                   "Week ",
@@ -1146,14 +1295,14 @@ server <- function(input, output, session) {
       
       p <- p + geom_bar(aes(fill = ngs_range()$team_color, color = ngs_range()$team_color, x = reorder(ngs_range()$short_name, y_axis_plot())), alpha = qb_highlight(), stat = "identity", width = 0.7) +
         geom_text(mapping = aes(y = ifelse(y_axis_plot() >= 0, y_axis_plot() + 0.035 * diff(range(y_axis_plot())), y_axis_plot() - 0.02 * diff(range(y_axis_plot()))), x = ngs_range()$short_name), 
-                  label = if (input$y_axis %in% c("Success Rate", "Completion % Over Expected", "Expected Completion %", "Aggressiveness", "CPOE (NGS)", "Expected Completion % (NGS)", "Completion %", "TD %", "INT %", "Passing 1st Down %", "No-Huddle Rate", "Scramble Rate", "Sack Rate", "Explosive Pass Rate", "Fumble %", "Turnover %")) {
+                  label = if (input$y_axis %in% c("Success Rate", "Completion % Over Expected", "Expected Completion %", "Aggressiveness", "CPOE (NGS)", "Expected Completion % (NGS)", "Completion %", "TD %", "INT %", "Passing 1st Down %", "No-Huddle Rate", "Scramble Rate", "Sack Rate", "Explosive Pass Rate", "Fumble %", "Turnover %", "WPA/Play", "Total WPA", "WPA/Turnover", "Total Turnover WPA", "QB Hit Rate")) {
                     paste0(100*round(y_axis_plot(), 2), "%")
                   } else {
                     round(y_axis_plot(), 2)
                   },
                   cex = 2.5, color = "black", alpha = qb_highlight_alpha()) +
-        scale_y_continuous(labels = if (input$y_axis %in% c("Success Rate", "Completion % Over Expected", "Expected Completion %", "Aggressiveness", "CPOE (NGS)", "Expected Completion % (NGS)", "Completion %", "TD %", "INT %", "Passing 1st Down %", "No-Huddle Rate", "Scramble Rate", "Sack Rate", "Explosive Pass Rate", "Fumble %", "Turnover %")) scales::percent_format() else scales::number_format()) +
-        geom_text(mapping = aes(y = avg_value() + 0.038 * diff(range(y_axis_plot()))), x = 1, label = paste("Average: ", if (input$y_axis %in% c("Success Rate", "Completion % Over Expected", "Expected Completion %", "Aggressiveness", "CPOE (NGS)", "Expected Completion % (NGS)", "Completion %", "TD %", "INT %", "Passing 1st Down %", "No-Huddle Rate", "Scramble Rate", "Sack Rate", "Explosive Pass Rate")) {
+        scale_y_continuous(labels = if (input$y_axis %in% c("Success Rate", "Completion % Over Expected", "Expected Completion %", "Aggressiveness", "CPOE (NGS)", "Expected Completion % (NGS)", "Completion %", "TD %", "INT %", "Passing 1st Down %", "No-Huddle Rate", "Scramble Rate", "Sack Rate", "Explosive Pass Rate", "Fumble %", "Turnover %", "WPA/Play", "Total WPA", "WPA/Turnover", "Total Turnover WPA", "QB Hit Rate")) scales::percent_format() else scales::number_format()) +
+        geom_text(mapping = aes(y = avg_value() + 0.038 * diff(range(y_axis_plot()))), x = 1, label = paste("Average: ", if (input$y_axis %in% c("Success Rate", "Completion % Over Expected", "Expected Completion %", "Aggressiveness", "CPOE (NGS)", "Expected Completion % (NGS)", "Completion %", "TD %", "INT %", "Passing 1st Down %", "No-Huddle Rate", "Scramble Rate", "Sack Rate", "Explosive Pass Rate", "Fumble %", "Turnover %", "WPA/Play", "Total WPA", "WPA/Turnover", "Total Turnover WPA", "QB Hit Rate")) {
           paste0(100*round(avg_value(), 2), "%")
         } else {
           round(avg_value(), 2)
@@ -1192,13 +1341,13 @@ server <- function(input, output, session) {
         xlab("") +
         ylab(ifelse(input$y_axis == "Explosive Pass Rate", "Explosive Pass Rate (20+ Yard Completions)", input$y_axis)) +
         labs(
-          caption = if (input$y_axis %in% c("Avg Time to Throw","Avg Completed Air Yards", "Avg Intended Air Yards", "Avg Air Yards Differential", "Aggressiveness", "Max Completed Air Distance", "Avg Air Yards to Sticks", "CPOE (NGS)", "Expected Completion % (NGS)")) {
+          caption = if (input$y_axis %in% c("Avg Time to Throw","Aggressiveness", "Max Completed Air Distance", "CPOE (NGS)", "Expected Completion % (NGS)")) {
             "Plot: @Doug_Analytics | Data: NGS"
           } else {
             "Plot: @Doug_Analytics | Data: nflfastR"
           },
           subtitle = paste("Season: ", 
-                           paste("<span style='color:royalblue3; font-weight:bold'>", "2023", "</span>"), 
+                           paste("<span style='color:royalblue3; font-weight:bold'>", season, "</span>"), 
                            "  |  ", 
                            ifelse(input$week_range[1] == input$week_range[2],
                                   "Week ",
@@ -1242,7 +1391,7 @@ server <- function(input, output, session) {
       scale_color_identity(aesthetics = c("fill", "color")) +
     
       scale_x_continuous(breaks = ngs_range_weekly()$week, labels = ngs_range_weekly()$week) +
-      scale_y_continuous(labels = if (input$y_axis %in% c("Success Rate", "Completion % Over Expected", "Expected Completion %", "Aggressiveness", "CPOE (NGS)", "Expected Completion % (NGS)", "Completion %", "TD %", "INT %", "Passing 1st Down %", "No-Huddle Rate", "Scramble Rate", "Sack Rate", "Explosive Pass Rate", "Fumble %", "Turnover %")) scales::percent_format() else scales::number_format()) +
+      scale_y_continuous(labels = if (input$y_axis %in% c("Success Rate", "Completion % Over Expected", "Expected Completion %", "Aggressiveness", "CPOE (NGS)", "Expected Completion % (NGS)", "Completion %", "TD %", "INT %", "Passing 1st Down %", "No-Huddle Rate", "Scramble Rate", "Sack Rate", "Explosive Pass Rate", "Fumble %", "Turnover %", "WPA/Play", "Total WPA", "WPA/Turnover", "Total Turnover WPA", "QB Hit Rate")) scales::percent_format() else scales::number_format()) +
       scale_alpha(range = c(0.1, 1), guide = "none") +
       theme(
         plot.title = element_text(
@@ -1270,13 +1419,13 @@ server <- function(input, output, session) {
       ylab(ifelse(input$y_axis == "Explosive Pass Rate", "Explosive Pass Rate (20+ Yard Completions)", input$y_axis)) +
       labs(
         color = "Quarterback",
-        caption = if (input$y_axis %in% c("Avg Time to Throw","Avg Completed Air Yards", "Avg Intended Air Yards", "Avg Air Yards Differential", "Aggressiveness", "Max Completed Air Distance", "Avg Air Yards to Sticks", "CPOE (NGS)", "Expected Completion % (NGS)")) {
-          "Twitter: @Doug_Analytics | Data: NGS"
+        caption = if (input$y_axis %in% c("Avg Time to Throw","Aggressiveness", "Max Completed Air Distance", "CPOE (NGS)", "Expected Completion % (NGS)")) {
+          "Plot: @Doug_Analytics | Data: NGS"
         } else {
-          "Twitter: @Doug_Analytics | Data: nflfastR"
+          "Plot: @Doug_Analytics | Data: nflfastR"
         },
         subtitle = paste("Season: ", 
-                         paste0("<span style='color:royalblue4; font-weight:bold'>", "2023", "</span>"), 
+                         paste0("<span style='color:royalblue4; font-weight:bold'>", season, "</span>"), 
                          "  |  ", 
                          ifelse(input$week_range[1] == input$week_range[2],
                                 "Week ",
